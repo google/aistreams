@@ -1,0 +1,7 @@
+bazel-bin
+bazel-genfiles
+bazel-out
+bazel-testlogs
+bazel-workdir
+bazel-aistreams-sdk
+ddcterm
