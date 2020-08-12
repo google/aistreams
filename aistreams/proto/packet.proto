@@ -1,0 +1,56 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "aistreams/proto/types/packet_type.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+package aistreams.proto;
+
+// This stores all semantic and metadata related one Packet.
+message PacketHeader {
+  // The timestamp at which the Packet was created.
+  google.protobuf.Timestamp timestamp = 1;
+
+  // The type of the payload.
+  PacketType type = 2;
+
+  // This field is for users to attach additional custom data.
+  //
+  // Each custom user data (addendum) is an entry in this map. When you attach a
+  // new addendum, make sure to choose a key that is not already present. Do not
+  // delete any entries other than those that you own.
+  //
+  // This is meant for custom data that is domain specific with possibly high
+  // turnover. If you find yourself relying on addendum entries for non-trivial
+  // "type checking", then that might be a sign for you to consider creating a
+  // new PacketType.
+  map<string, google.protobuf.Any> addenda = 3;
+
+  // The tracing context of the packet, for purpose of distributed tracing.
+  string trace_context = 4;
+}
+
+// The quanta of datum that a stream accepts.
+//
+// Example
+// -------
+// For a Packet that contains a jpeg, the header will set packet_type to JPEG
+// and the payload will store the compressed jpeg bytes as a binary string.
+message Packet {
+  PacketHeader header = 1;
+  bytes payload = 2;
+}

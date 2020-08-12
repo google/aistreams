@@ -1,0 +1,81 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "aistreams/proto/packet.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+package aistreams.proto;
+
+// Response message for SendPackets.
+message SendPacketsResponse {}
+
+// Response message for SendOnePacket.
+message SendOnePacketResponse {
+  // The sent packet was accepted into the stream.
+  // This can be false when the stream is full.
+  bool accepted = 1;
+}
+
+// Request message for ReceivePackets.
+message ReceivePacketsRequest {
+  // To start receiving packets, client has to provide a unique consumer name.
+  // If the consumer name was duplicated, the
+  // stream server will reject the request.
+  string consumer_name = 1;
+}
+
+// Request message for ReceiveOnePacket.
+message ReceiveOnePacketRequest {
+  // To start receiving packets, client has to provide a unique consumer name.
+  // If the server has never seen this consumer name, it will add this consumer
+  // name and start recording its offset.
+  string consumer_name = 1;
+
+  // If true, then this request will block until a new element is available to
+  // the consumer. Otherwise return UNAVAILABLE status immediately if there's no
+  // available new element.
+  //
+  // By default blocking is false.
+  bool blocking = 2;
+}
+
+// Response message for ReceiveOnePacket.
+message ReceiveOnePacketResponse {
+  // Set to true when the enclosed packet is valid for use.
+  // This can be false, for example, when the stream is empty.
+  bool valid = 1;
+
+  // The packet returned from the server.
+  // Accessing this field when valid is false is undefined behavior.
+  Packet packet = 2;
+}
+
+// This is the server that accepts stream packets.
+service StreamServer {
+  // Send packets to an existing stream.
+  rpc SendPackets(stream Packet) returns (SendPacketsResponse) {}
+
+  // Send one packet to an existing stream.
+  rpc SendOnePacket(Packet) returns (SendOnePacketResponse) {}
+
+  // Receive packets from an existing stream.
+  rpc ReceivePackets(ReceivePacketsRequest) returns (stream Packet) {}
+
+  // Receive one packet from an existing stream.
+  rpc ReceiveOnePacket(ReceiveOnePacketRequest)
+      returns (ReceiveOnePacketResponse) {}
+}

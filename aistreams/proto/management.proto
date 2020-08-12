@@ -1,0 +1,55 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+package aistreams.proto;
+
+// Request message for CreateStream.
+message CreateStreamRequest {
+  // The stream name you want to be created.
+  string stream_name = 1;
+}
+
+// Response message from CreateStream.
+message CreateStreamResponse {
+  // The name of the created stream.
+  string stream_name = 1;
+}
+
+// Request message for DeleteStream.
+message DeleteStreamRequest {
+  string stream_name = 1;
+}
+
+// Request message for ListStream.
+message ListStreamRequest {}
+
+// Response message from ListStream.
+message ListStreamResponse {
+  repeated string stream_names = 1;
+}
+
+// This is the stream management server.
+service StreamManagementServer {
+  // Create a stream to which packets may be sent.
+  rpc CreateStream(CreateStreamRequest) returns (CreateStreamResponse) {}
+  // Delete a stream.
+  rpc DeleteStream(DeleteStreamRequest) returns (google.protobuf.Empty) {}
+  // List streams.
+  rpc ListStream(ListStreamRequest) returns (ListStreamResponse) {}
+}
