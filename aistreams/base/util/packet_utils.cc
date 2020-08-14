@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "aistreams/base/packet_utils.h"
+#include "aistreams/base/util/packet_utils.h"
 
 #include <time.h>
 

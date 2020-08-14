@@ -19,8 +19,8 @@
 
 #include <utility>
 
-#include "aistreams/base/packet_utils.h"
 #include "aistreams/base/types/packet_types/packet_types.h"
+#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 #include "aistreams/port/statusor.h"

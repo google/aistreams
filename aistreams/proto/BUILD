@@ -18,7 +18,7 @@ cc_proto_library(
 )
 
 cc_grpc_library(
-    name = "management_proto_cc_grpc",
+    name = "management_cc_grpc",
     srcs = [":management_proto"],
     grpc_only = True,
     well_known_protos = True,
@@ -57,7 +57,7 @@ cc_proto_library(
 )
 
 cc_grpc_library(
-    name = "stream_proto_cc_grpc",
+    name = "stream_cc_grpc",
     srcs = [":stream_proto"],
     grpc_only = True,
     well_known_protos = True,

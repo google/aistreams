@@ -13,8 +13,8 @@ cc_library(
         "packet.h",
     ],
     deps = [
-        ":packet_utils",
         "//aistreams/base/types",
+        "//aistreams/base/util:packet_utils",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",
@@ -41,12 +41,70 @@ cc_test(
 )
 
 cc_library(
-    name = "packet_utils",
-    srcs = ["packet_utils.cc"],
-    hdrs = ["packet_utils.h"],
+    name = "connection_options",
+    hdrs = ["connection_options.h"],
+)
+
+cc_library(
+    name = "stream_channel",
+    srcs = ["stream_channel.cc"],
+    hdrs = ["stream_channel.h"],
     deps = [
+        ":connection_options",
+        "//aistreams/base/util:grpc_helpers",
+        "//aistreams/port:grpc++",
         "//aistreams/port:logging",
         "//aistreams/port:status",
+        "//aistreams/port:statusor",
+    ],
+)
+
+cc_library(
+    name = "packet_receiver",
+    srcs = ["packet_receiver.cc"],
+    hdrs = ["packet_receiver.h"],
+    deps = [
+        ":connection_options",
+        ":stream_channel",
+        "//aistreams/port:grpc++",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
         "//aistreams/proto:packet_cc_proto",
+        "//aistreams/proto:stream_cc_grpc",
+        "//aistreams/proto:stream_cc_proto",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "packet_sender",
+    srcs = ["packet_sender.cc"],
+    hdrs = ["packet_sender.h"],
+    deps = [
+        ":connection_options",
+        ":stream_channel",
+        "//aistreams/port:grpc++",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/proto:packet_cc_proto",
+        "//aistreams/proto:stream_cc_grpc",
+        "//aistreams/proto:stream_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "management_client",
+    srcs = ["management_client.cc"],
+    hdrs = ["management_client.h"],
+    deps = [
+        "//aistreams/base/util:grpc_helpers",
+        "//aistreams/port:grpc++",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/proto:management_cc_grpc",
+        "//aistreams/proto:management_cc_proto",
     ],
 )

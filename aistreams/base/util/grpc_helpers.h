@@ -14,21 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef AISTREAMS_BASE_PACKET_UTILS_H_
-#define AISTREAMS_BASE_PACKET_UTILS_H_
+#ifndef AISTREAMS_BASE_UTIL_GRPC_HELPERS_H_
+#define AISTREAMS_BASE_UTIL_GRPC_HELPERS_H_
 
-#include <vector>
+#include <memory>
+#include <string>
 
-#include "aistreams/port/status.h"
-#include "aistreams/proto/packet.pb.h"
+#include "absl/strings/string_view.h"
+#include "aistreams/base/connection_options.h"
+#include "aistreams/port/grpcpp.h"
 
 namespace aistreams {
 namespace base {
 
-// Set the packet timestamp to the current local time.
-Status SetToCurrentTime(Packet*);
+// Helper to create a gRPC channel; optionally enables SSL.
+//
+// Returns `nullptr` on error.
+std::shared_ptr<grpc::Channel> CreateGrpcChannel(
+    const ConnectionOptions &options);
 
 }  // namespace base
 }  // namespace aistreams
 
-#endif  // AISTREAMS_BASE_PACKET_UTILS_H_
+#endif  // AISTREAMS_BASE_UTIL_GRPC_HELPERS_H_

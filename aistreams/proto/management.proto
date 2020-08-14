@@ -45,7 +45,7 @@ message ListStreamResponse {
 }
 
 // This is the stream management server.
-service StreamManagementServer {
+service ManagementServer {
   // Create a stream to which packets may be sent.
   rpc CreateStream(CreateStreamRequest) returns (CreateStreamResponse) {}
   // Delete a stream.
