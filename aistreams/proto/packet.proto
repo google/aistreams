@@ -18,7 +18,7 @@ import "aistreams/proto/types/packet_type.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
-package aistreams.proto;
+package aistreams;
 
 // This stores all semantic and metadata related one Packet.
 message PacketHeader {

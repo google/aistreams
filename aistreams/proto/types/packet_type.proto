@@ -16,7 +16,7 @@ syntax = "proto3";
 
 import "google/protobuf/any.proto";
 
-package aistreams.proto;
+package aistreams;
 
 // This is the set of all known pre-defined types.
 enum PacketTypeId {

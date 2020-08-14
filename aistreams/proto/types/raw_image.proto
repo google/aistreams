@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package aistreams.proto;
+package aistreams;
 
 enum RawImageFormat {
   RAW_IMAGE_FORMAT_UNKNOWN = 0;

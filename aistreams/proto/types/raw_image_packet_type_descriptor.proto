@@ -16,7 +16,7 @@ syntax = "proto3";
 
 import "aistreams/proto/types/raw_image.proto";
 
-package aistreams.proto;
+package aistreams;
 
 message RawImagePacketTypeDescriptor {
   RawImageDescriptor raw_image_descriptor = 1;

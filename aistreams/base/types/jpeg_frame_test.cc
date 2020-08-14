@@ -12,18 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto3";
+#include "aistreams/base/types/jpeg_frame.h"
 
-package aistreams;
+#include <memory>
+#include <string>
 
-// The descriptor for a protobuf packet type.
-message ProtobufPacketTypeDescriptor {
-  // The name of the specific protobuf message type represented in the payload.
-  string specific_message_type_name = 1;
+#include "aistreams/port/gtest.h"
+#include "aistreams/port/logging.h"
+#include "aistreams/port/status.h"
+#include "aistreams/port/statusor.h"
 
-  // If false, then the payload is the encoded binary representation of the
-  // message. Otherwise, it is the text format representation.
-  //
-  // TODO(dschao): Do we really need this?
-  bool is_text_format = 2;
+namespace aistreams {
+namespace base {
+
+TEST(JpegFrameTest, StringConstructorTest) {
+  {
+    std::string bytes(10, 1);
+    JpegFrame jpg(std::move(bytes));
+    EXPECT_NE(jpg.data(), nullptr);
+    EXPECT_EQ(jpg.size(), 10);
+    for (size_t i = 0; i < jpg.size(); ++i) {
+      EXPECT_EQ(jpg.data()[i], 1);
+    }
+  }
 }
+
+}  // namespace base
+}  // namespace aistreams

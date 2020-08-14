@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package aistreams.proto;
+package aistreams;
 
 // The descriptor for a GstreamerBuffer packet type.
 message GstreamerBufferPacketTypeDescriptor {

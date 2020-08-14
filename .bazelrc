@@ -1,0 +1,4 @@
+build --copt=-fdiagnostics-color=always
+run --copt=-fdiagnostics-color=always
+
+build --cxxopt=-std=c++14
