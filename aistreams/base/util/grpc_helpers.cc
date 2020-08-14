@@ -14,6 +14,8 @@
 
 #include "aistreams/base/util/grpc_helpers.h"
 
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
@@ -66,6 +68,13 @@ std::shared_ptr<grpc::Channel> CreateGrpcChannel(
                                    ssl_options.ssl_domain_name,
                                    ssl_options.ssl_root_cert_path);
   }
+}
+
+Status FillGrpcClientContext(const RpcOptions &options,
+                             grpc::ClientContext *ctx) {
+  ctx->set_wait_for_ready(options.wait_for_ready);
+  ctx->set_deadline(ToChronoTime(absl::Now() + options.timeout));
+  return OkStatus();
 }
 
 }  // namespace base

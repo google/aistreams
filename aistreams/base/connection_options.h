@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "absl/time/time.h"
+
 namespace aistreams {
 namespace base {
 
@@ -39,15 +41,26 @@ struct SslOptions {
   std::string ssl_root_cert_path;
 };
 
+// Options to configure a RPCs.
+struct RpcOptions {
+  // The timeout for a call.
+  absl::Duration timeout = absl::Minutes(5);
+
+  // If true, then block until the underlying communication channel
+  // becomes ready instead of failing fast.
+  bool wait_for_ready = true;
+};
+
 // Options to connect to a service in AI Streams.
 struct ConnectionOptions {
   // This is the ip:port to an AI Streams service.
-  //
-  // Most commonly, this is the endpoint of the ingress.
   std::string target_address;
 
-  // Options to enable/configure SSL.
+  // Options to configure TLS/SSL over the communication channel.
   SslOptions ssl_options;
+
+  // Options to configure RPCs made over this connection.
+  RpcOptions rpc_options;
 };
 
 }  // namespace base

@@ -23,13 +23,11 @@
 namespace aistreams {
 namespace base {
 
-PacketSender::PacketSender(const PacketSenderOptions& options)
-    : options_(options) {}
+PacketSender::PacketSender(const Options& options) : options_(options) {}
 
 Status PacketSender::Initialize() {
   StreamChannel::Options stream_channel_options;
-  stream_channel_options.target_address = options_.target_address;
-  stream_channel_options.ssl_options = options_.ssl_options;
+  stream_channel_options.connection_options = options_.connection_options;
   auto stream_channel_status_or = StreamChannel::Create(stream_channel_options);
   if (!stream_channel_status_or.ok()) {
     LOG(ERROR) << stream_channel_status_or.status();
@@ -62,7 +60,7 @@ Status PacketSender::Initialize() {
 }
 
 StatusOr<std::unique_ptr<PacketSender>> PacketSender::Create(
-    const PacketSenderOptions& options) {
+    const Options& options) {
   auto packet_sender = std::make_unique<PacketSender>(options);
   AIS_RETURN_IF_ERROR(packet_sender->Initialize());
   return packet_sender;

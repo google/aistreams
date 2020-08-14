@@ -31,11 +31,8 @@ constexpr char kStreamMetadataKeyName[] = "stream";
 StreamChannel::StreamChannel(const Options& options) : options_(options) {}
 
 Status StreamChannel::Initialize() {
-  // Create a grpc channel.
-  ConnectionOptions connection_options;
-  connection_options.target_address = options_.target_address;
-  connection_options.ssl_options = options_.ssl_options;
-  grpc_channel_ = CreateGrpcChannel(connection_options);
+  // Establish a grpc channel.
+  grpc_channel_ = CreateGrpcChannel(options_.connection_options);
   if (grpc_channel_ == nullptr) {
     return UnknownError("Failed to create a gRPC channel");
   }
@@ -53,12 +50,10 @@ StreamChannel::MakeClientContext() const {
     ctx->AddMetadata(kStreamMetadataKeyName, options_.stream_name);
   }
 
-  // If set, if an RPC is made when a channel's connectivity state is
-  // TRANSIENT_FAILURE or CONNECTING, the call will not "fail fast", and the
-  // channel will wait until the channel is READY before making the call.
-  if (options_.wait_for_ready) {
-    ctx->set_wait_for_ready(true);
-  }
+  // Configure the RPC options.
+  AIS_RETURN_IF_ERROR(FillGrpcClientContext(
+      options_.connection_options.rpc_options, ctx.get()));
+
   return ctx;
 }
 

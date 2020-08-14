@@ -43,6 +43,9 @@ cc_test(
 cc_library(
     name = "connection_options",
     hdrs = ["connection_options.h"],
+    deps = [
+        "@com_google_absl//absl/time",
+    ],
 )
 
 cc_library(

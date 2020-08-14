@@ -23,6 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "aistreams/base/connection_options.h"
 #include "aistreams/port/grpcpp.h"
+#include "aistreams/port/status.h"
 
 namespace aistreams {
 namespace base {
@@ -32,6 +33,10 @@ namespace base {
 // Returns `nullptr` on error.
 std::shared_ptr<grpc::Channel> CreateGrpcChannel(
     const ConnectionOptions &options);
+
+// Helper to fill a grpc::ClientContext given a RpcOption.
+Status FillGrpcClientContext(const RpcOptions &options,
+                             grpc::ClientContext *ctx);
 
 }  // namespace base
 }  // namespace aistreams

@@ -27,26 +27,21 @@
 namespace aistreams {
 namespace base {
 
-// A class that establishes a gRPC client channel and manages a client context
-// to the stream server.
+// A class that establishes a gRPC client channel and configures an RPC client
+// context suitable for interacting with the stream server.
 class StreamChannel {
  public:
-  // Configuration options.
+  // Options to configure the connection channel.
   struct Options {
-    // The ip:port to the service.
-    std::string target_address;
+    // Options to configure the RPC connection.
+    ConnectionOptions connection_options;
 
     // The stream name to connect to.
     //
-    // Note: This is needed if `target_address` is to the ingress. You can leave
-    // this empty if you are directly connecting to the stream server.
+    // Note: This is needed if `ConnectionOptions.target_address` is to the
+    // ingress. You can leave this empty if you are directly connecting to the
+    // stream server.
     std::string stream_name;
-
-    // Options to enable/configure SSL.
-    SslOptions ssl_options;
-
-    // Option to wait until the channel is READY before making the call.
-    bool wait_for_ready = true;
   };
 
   // Creates and initializes an instance that is ready for use.

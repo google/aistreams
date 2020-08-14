@@ -29,43 +29,39 @@
 namespace aistreams {
 namespace base {
 
-// Options for configuring the packet sender.
-struct PacketSenderOptions {
-  // The ip:port to the service.
-  std::string target_address;
-
-  // The stream name to connect to.
-  //
-  // Note: This is needed if `target_address` is to the ingress. You can leave
-  // this empty if you are directly connecting to the stream server.
-  std::string stream_name;
-
-  // Options to enable/configure SSL.
-  SslOptions ssl_options;
-
-  // Set this true to use unary rpc to send packets.
-  //
-  // This is mainly useful for approximate profiling/packet tracing with istio.
-  // It is not particularly efficient.
-  bool enable_unary_rpc = false;
-};
-
 // Use this class to send a packet to a stream.
 class PacketSender {
  public:
+  // Options for configuring the packet sender.
+  struct Options {
+    // Options to configure the RPC connection.
+    ConnectionOptions connection_options;
+
+    // The stream name to connect to.
+    //
+    // Note: This is needed if `target_address` is to the ingress. You can leave
+    // this empty if you are directly connecting to the stream server.
+    std::string stream_name;
+
+    // Set this true to use unary rpc to send packets.
+    //
+    // This is mainly useful for approximate profiling/packet tracing with
+    // istio. It is not particularly efficient.
+    bool enable_unary_rpc = false;
+  };
+
   // Creates and initializes an instance that is ready for use.
-  static StatusOr<std::unique_ptr<PacketSender>> Create(
-      const PacketSenderOptions&);
+  static StatusOr<std::unique_ptr<PacketSender>> Create(const Options&);
 
   // Send the given packet.
   Status Send(const Packet&);
 
   // Use Create instead of the bare constructors.
-  PacketSender(const PacketSenderOptions&);
+  PacketSender(const Options&);
   ~PacketSender();
 
  private:
-  PacketSenderOptions options_;
+  Options options_;
   std::unique_ptr<StreamChannel> stream_channel_ = nullptr;
   std::unique_ptr<StreamServer::Stub> stub_ = nullptr;
   std::unique_ptr<grpc::ClientContext> ctx_ = nullptr;

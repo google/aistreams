@@ -29,39 +29,35 @@
 namespace aistreams {
 namespace base {
 
-// Options for configuring the packet receiver.
-struct PacketReceiverOptions {
-  // The ip:port to the service.
-  std::string target_address;
-
-  // The stream name to connect to.
-  //
-  // Note: This is needed if `target_address` is to the ingress. You can leave
-  // this empty if you are directly connecting to the stream server.
-  std::string stream_name;
-
-  // Options to enable/configure SSL.
-  SslOptions ssl_options;
-
-  // Set this true to use unary rpc to receive packets.
-  //
-  // This is mainly useful for approximate profiling/packet tracing with istio.
-  // It is not particularly efficient.
-  bool enable_unary_rpc = false;
-
-  // The interval (ms) between unary rpc polls.
-  int unary_rpc_poll_interval_ms = 0;
-};
-
 // The callback type used to subscribe to incoming packets.
 using PacketCallback = std::function<Status(Packet)>;
 
 // Use this class to subscribe to a stream for packets.
 class PacketReceiver {
  public:
+  // Options for configuring the packet receiver.
+  struct Options {
+    // Options to configure the RPC connection.
+    ConnectionOptions connection_options;
+
+    // The stream name to connect to.
+    //
+    // Note: This is needed if `target_address` is to the ingress. You can leave
+    // this empty if you are directly connecting to the stream server.
+    std::string stream_name;
+
+    // Set this true to use unary rpc to receive packets.
+    //
+    // This is mainly useful for approximate profiling/packet tracing with
+    // istio. It is not particularly efficient.
+    bool enable_unary_rpc = false;
+
+    // The interval (ms) between unary rpc polls.
+    int unary_rpc_poll_interval_ms = 0;
+  };
+
   // Creates and initializes an instance that is ready for use.
-  static StatusOr<std::unique_ptr<PacketReceiver>> Create(
-      const PacketReceiverOptions&);
+  static StatusOr<std::unique_ptr<PacketReceiver>> Create(const Options&);
 
   // Receive a packet.
   //
@@ -80,11 +76,11 @@ class PacketReceiver {
   Status Subscribe(const PacketCallback&);
 
   // Use Create instead of the bare constructors.
-  PacketReceiver(const PacketReceiverOptions&);
+  PacketReceiver(const Options&);
   ~PacketReceiver() = default;
 
  private:
-  PacketReceiverOptions options_;
+  Options options_;
   std::unique_ptr<StreamChannel> stream_channel_ = nullptr;
   std::unique_ptr<StreamServer::Stub> stub_ = nullptr;
   std::unique_ptr<grpc::ClientContext> ctx_ = nullptr;

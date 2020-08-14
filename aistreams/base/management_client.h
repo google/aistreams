@@ -27,35 +27,24 @@
 namespace aistreams {
 namespace base {
 
-// Client options for creating the management client.
-struct ManagementClientOptions {
-  // The ip:port to the service.
-  std::string target_address;
-
-  // Options to enable/configure SSL.
-  SslOptions ssl_options;
-
-  // Options for timeout of each RPC call. Default timeout is set to 5 minutes.
-  std::chrono::seconds timeout = std::chrono::seconds(300);
-};
-
 // Management client for creating/deleting/listing streams.
+//
 // TODO(yxyan): add interface for ManagementClient and add mock for
 // the client.
 class ManagementClient {
  public:
   static StatusOr<std::unique_ptr<ManagementClient>> Create(
-      const ManagementClientOptions& options);
+      const ConnectionOptions& options);
 
   Status CreateStream(const std::string& stream_name);
 
   Status DeleteStream(const std::string& stream_name);
 
  private:
-  ManagementClient(const ManagementClientOptions& options);
+  ManagementClient(const ConnectionOptions& options);
   Status Initialize();
 
-  const ManagementClientOptions options_;
+  const ConnectionOptions options_;
   std::unique_ptr<ManagementServer::Stub> stub_ = nullptr;
 };
 

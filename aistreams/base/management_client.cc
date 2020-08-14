@@ -24,21 +24,17 @@ namespace aistreams {
 namespace base {
 
 StatusOr<std::unique_ptr<ManagementClient>> ManagementClient::Create(
-    const ManagementClientOptions& options) {
+    const ConnectionOptions& options) {
   std::unique_ptr<ManagementClient> client(new ManagementClient(options));
   AIS_RETURN_IF_ERROR(client->Initialize());
   return client;
 }
 
-ManagementClient::ManagementClient(const ManagementClientOptions& options)
+ManagementClient::ManagementClient(const ConnectionOptions& options)
     : options_(options) {}
 
 Status ManagementClient::Initialize() {
-  // Create a grpc channel.
-  ConnectionOptions connection_options;
-  connection_options.target_address = options_.target_address;
-  connection_options.ssl_options = options_.ssl_options;
-  auto grpc_channel = CreateGrpcChannel(connection_options);
+  auto grpc_channel = CreateGrpcChannel(options_);
   if (grpc_channel == nullptr) {
     return UnknownError("Failed to create a gRPC channel");
   }
@@ -52,7 +48,7 @@ Status ManagementClient::Initialize() {
 
 Status ManagementClient::CreateStream(const std::string& stream_name) {
   grpc::ClientContext context;
-  context.set_deadline(std::chrono::system_clock::now() + options_.timeout);
+  AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
   CreateStreamRequest request;
   CreateStreamResponse response;
@@ -68,7 +64,7 @@ Status ManagementClient::CreateStream(const std::string& stream_name) {
 
 Status ManagementClient::DeleteStream(const std::string& stream_name) {
   grpc::ClientContext context;
-  context.set_deadline(std::chrono::system_clock::now() + options_.timeout);
+  AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
   DeleteStreamRequest request;
   google::protobuf::Empty response;
