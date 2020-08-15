@@ -42,7 +42,6 @@ def aistreams_sdk_deps():
         ],
         strip_prefix="benchmark-1.5.1",
         sha256="23082937d1663a53b90cb5b61df4bcc312f6dee7018da78ba00dd6bd669dfef2",
-        build_file="//third_party:benchmark.BUILD",
     )
 
   if "com_github_google_googletest" not in native.existing_rules():
