@@ -33,7 +33,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Packs (marshalls) an object of a given type into a Packet.
 //
@@ -116,7 +115,6 @@ Status Unpack(Packet&& p, T* t) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_PACKET_TYPES_H_

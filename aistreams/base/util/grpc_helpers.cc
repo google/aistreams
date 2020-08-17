@@ -24,7 +24,6 @@
 #include "aistreams/util/file_helpers.h"
 
 namespace aistreams {
-namespace base {
 
 namespace {
 
@@ -77,5 +76,4 @@ Status FillGrpcClientContext(const RpcOptions &options,
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

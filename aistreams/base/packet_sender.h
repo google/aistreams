@@ -27,7 +27,6 @@
 #include "aistreams/proto/stream.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Use this class to send a packet to a stream.
 class PacketSender {
@@ -73,7 +72,6 @@ class PacketSender {
   Status UnarySend(const Packet&);
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_PACKET_SENDER_H_

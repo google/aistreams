@@ -28,7 +28,6 @@
 #include "google/protobuf/any.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // We are using a similar pattern documented in
 // https://en.cppreference.com/w/cpp/types/void_t
@@ -129,7 +128,6 @@ Status UnpackPayload(const Packet& p, T* t) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_PROTOBUF_PACKET_TYPE_H_

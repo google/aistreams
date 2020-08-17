@@ -17,7 +17,6 @@
 #include "aistreams/proto/types/raw_image_packet_type_descriptor.pb.h"
 
 namespace aistreams {
-namespace base {
 
 TEST(PacketTest, MakePacketStringTest) {
   {
@@ -279,5 +278,4 @@ TEST(PacketTest, PacketAsGstreamerBufferTest) {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

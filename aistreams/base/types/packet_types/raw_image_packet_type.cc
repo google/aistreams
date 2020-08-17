@@ -23,7 +23,6 @@
 #include "aistreams/proto/types/raw_image_packet_type_descriptor.pb.h"
 
 namespace aistreams {
-namespace base {
 
 namespace {
 
@@ -106,5 +105,4 @@ Status UnpackPayload(Packet&& p, RawImage* to) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

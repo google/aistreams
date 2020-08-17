@@ -19,7 +19,6 @@
 #include "aistreams/port/logging.h"
 
 namespace aistreams {
-namespace base {
 
 int GetNumChannels(const RawImageFormat& format) {
   switch (format) {
@@ -51,5 +50,4 @@ size_t GetBufferSize(const RawImageDescriptor& desc) {
   return desc.height() * desc.width() * GetNumChannels(desc.format());
 }
 
-}  // namespace base
 }  // namespace aistreams

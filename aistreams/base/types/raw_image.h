@@ -23,7 +23,6 @@
 #include "aistreams/proto/types/raw_image.pb.h"
 
 namespace aistreams {
-namespace base {
 
 class RawImage {
  public:
@@ -89,7 +88,6 @@ class RawImage {
   std::string data_;
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_RAW_IMAGE_H_

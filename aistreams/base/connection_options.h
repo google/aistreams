@@ -22,7 +22,6 @@
 #include "absl/time/time.h"
 
 namespace aistreams {
-namespace base {
 
 // Options to enable/configure SSL.
 struct SslOptions {
@@ -63,7 +62,6 @@ struct ConnectionOptions {
   RpcOptions rpc_options;
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_CONNECTION_OPTIONS_H_

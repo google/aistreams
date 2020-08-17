@@ -22,7 +22,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 namespace {
 
@@ -89,5 +88,4 @@ Status UnpackPayload(Packet&& p, GstreamerBuffer* to) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

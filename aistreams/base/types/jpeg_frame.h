@@ -22,7 +22,6 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 // A JpegFrame holds a buffer of the jpeg encoded bytes.
 // The elements in [data(), data()+size()) can be directly used for decoding.
@@ -54,7 +53,6 @@ class JpegFrame {
   std::string bytes_;
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_JPEG_FRAME_H_

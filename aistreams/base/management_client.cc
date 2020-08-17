@@ -21,7 +21,6 @@
 #include "aistreams/proto/management.pb.h"
 
 namespace aistreams {
-namespace base {
 
 StatusOr<std::unique_ptr<ManagementClient>> ManagementClient::Create(
     const ConnectionOptions& options) {
@@ -78,5 +77,4 @@ Status ManagementClient::DeleteStream(const std::string& stream_name) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

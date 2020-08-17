@@ -22,7 +22,6 @@
 #include "aistreams/port/status_macros.h"
 
 namespace aistreams {
-namespace base {
 
 namespace {
 constexpr char kStreamMetadataKeyName[] = "stream";
@@ -64,5 +63,4 @@ StatusOr<std::unique_ptr<StreamChannel>> StreamChannel::Create(
   return stream_channel;
 }
 
-}  // namespace base
 }  // namespace aistreams

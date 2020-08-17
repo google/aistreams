@@ -25,7 +25,6 @@
 #include "aistreams/port/statusor.h"
 
 namespace aistreams {
-namespace base {
 
 // A class that establishes a gRPC client channel and configures an RPC client
 // context suitable for interacting with the stream server.
@@ -63,7 +62,6 @@ class StreamChannel {
   Status Initialize();
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_STREAM_CHANNEL_H_

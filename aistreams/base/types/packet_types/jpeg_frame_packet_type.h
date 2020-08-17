@@ -23,7 +23,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Specialization to map JpegFrames to Packets of type PACKET_TYPE_JPEG.
 template <>
@@ -51,7 +50,6 @@ Status UnpackPayload(const Packet& p, JpegFrame*);
 // Unpack the Packet's payload with move semantics.
 Status UnpackPayload(Packet&& p, JpegFrame*);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_JPEG_FRAME_PACKET_TYPE_H_

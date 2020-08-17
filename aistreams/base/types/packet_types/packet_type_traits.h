@@ -22,7 +22,6 @@
 #include "google/protobuf/any.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // To add a new packet type, do the following:
 // 1. Specialize the class template PacketTypeTraits and supply implementations
@@ -65,7 +64,6 @@ struct PacketTypeTraits {
   }
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_PACKET_TYPE_TRAITS_H_

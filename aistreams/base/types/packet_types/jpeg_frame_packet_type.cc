@@ -22,7 +22,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 Status PackPayload(const JpegFrame& jpeg_frame, Packet* p) {
   if (p == nullptr) {
@@ -59,5 +58,4 @@ Status UnpackPayload(Packet&& p, JpegFrame* to) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

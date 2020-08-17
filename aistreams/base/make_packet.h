@@ -26,7 +26,6 @@
 #include "aistreams/port/statusor.h"
 
 namespace aistreams {
-namespace base {
 
 // Create a Packet from an object of type T.
 //
@@ -75,7 +74,6 @@ StatusOr<Packet> MakePacket(T&& t) {
                     /* set_current_time = */ true);
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_MAKE_PACKET_H_

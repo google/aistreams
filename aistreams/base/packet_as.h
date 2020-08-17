@@ -26,7 +26,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // A PacketAs object is an adapter used to acquire/access the data in a given
 // Packet. It provides methods so that the user can do so safely and
@@ -193,7 +192,6 @@ T&& PacketAs<T>::ValueOrDie() && {
   return std::move(value_);
 }
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_PACKET_AS_H_

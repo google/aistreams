@@ -25,7 +25,6 @@
 #include "aistreams/proto/management.grpc.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Management client for creating/deleting/listing streams.
 //
@@ -48,7 +47,6 @@ class ManagementClient {
   std::unique_ptr<ManagementServer::Stub> stub_ = nullptr;
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_MANAGEMENT_CLIENT_H_

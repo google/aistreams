@@ -25,7 +25,6 @@
 #include "aistreams/proto/types/raw_image.pb.h"
 
 namespace aistreams {
-namespace base {
 
 TEST(RawImageHelpersTest, GetNumChannelsTest) {
   EXPECT_EQ(GetNumChannels(RAW_IMAGE_FORMAT_UNKNOWN), 1);
@@ -243,5 +242,4 @@ TEST(RawImageTest, ReleaseBufferTest) {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

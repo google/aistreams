@@ -24,7 +24,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Specialization to map std::string to Packets of type
 // PACKET_TYPE_STRING.
@@ -53,7 +52,6 @@ Status UnpackPayload(const Packet& p, std::string*);
 // Unpack the Packet's payload with move semantics.
 Status UnpackPayload(Packet&& p, std::string*);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_STRING_PACKET_TYPE_H_

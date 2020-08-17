@@ -24,7 +24,6 @@
 #include "aistreams/port/statusor.h"
 
 namespace aistreams {
-namespace base {
 
 TEST(GstreamerBufferTest, DefaultBufferTest) {
   {
@@ -80,5 +79,4 @@ TEST(GstreamerBufferTest, AssignTest) {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

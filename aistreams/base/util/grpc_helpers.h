@@ -26,7 +26,6 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 // Helper to create a gRPC channel; optionally enables SSL.
 //
@@ -38,7 +37,6 @@ std::shared_ptr<grpc::Channel> CreateGrpcChannel(
 Status FillGrpcClientContext(const RpcOptions &options,
                              grpc::ClientContext *ctx);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_UTIL_GRPC_HELPERS_H_

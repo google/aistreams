@@ -23,7 +23,6 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 // A GstreamerBuffer contains the data in a GstBuffer and a string that
 // describes its GstCaps (the "type").
@@ -88,7 +87,6 @@ class GstreamerBuffer {
   std::string bytes_;
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_GSTREAMER_BUFFER_H_

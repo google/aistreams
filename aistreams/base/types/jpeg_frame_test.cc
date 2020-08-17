@@ -23,7 +23,6 @@
 #include "aistreams/port/statusor.h"
 
 namespace aistreams {
-namespace base {
 
 TEST(JpegFrameTest, StringConstructorTest) {
   {
@@ -37,5 +36,4 @@ TEST(JpegFrameTest, StringConstructorTest) {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

@@ -27,7 +27,6 @@
 #include "aistreams/proto/stream.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // The callback type used to subscribe to incoming packets.
 using PacketCallback = std::function<Status(Packet)>;
@@ -94,7 +93,6 @@ class PacketReceiver {
   Status UnarySubscribe(const PacketCallback&);
 };
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_PACKET_RECEIVER_H_

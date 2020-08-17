@@ -26,7 +26,6 @@
 #include "aistreams/proto/types/raw_image_packet_type_descriptor.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Specialization to map RawImage to Packets of type PACKET_TYPE_RAW_IMAGE.
 template <>
@@ -67,7 +66,6 @@ Status UnpackPayload(const Packet& p, RawImage* to);
 // Unpack the Packet's payload with move semantics.
 Status UnpackPayload(Packet&& p, RawImage* to);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_RAW_IMAGE_PACKET_TYPE_H_

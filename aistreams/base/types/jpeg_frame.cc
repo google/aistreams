@@ -19,9 +19,7 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 JpegFrame::JpegFrame(std::string s) : bytes_(std::move(s)){};
 
-}  // namespace base
 }  // namespace aistreams

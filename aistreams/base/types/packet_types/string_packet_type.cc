@@ -21,7 +21,6 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 Status PackPayload(const std::string& s, Packet* p) {
   if (p == nullptr) {
@@ -55,5 +54,4 @@ Status UnpackPayload(Packet&& p, std::string* to) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

@@ -25,7 +25,6 @@
 #include "aistreams/proto/types/gstreamer_buffer_packet_type_descriptor.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Specialization to map GstreamerBuffers to Packets of type
 // PACKET_TYPE_GSTREAMER_BUFFER.
@@ -63,7 +62,6 @@ Status UnpackPayload(const Packet& p, GstreamerBuffer*);
 // Unpack the Packet's payload with move semantics.
 Status UnpackPayload(Packet&& p, GstreamerBuffer*);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_PACKET_TYPES_GSTREAMER_BUFFER_PACKET_TYPE_H_

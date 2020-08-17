@@ -21,7 +21,6 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 Status SetToCurrentTime(Packet* p) {
   if (p == nullptr) {
@@ -36,5 +35,4 @@ Status SetToCurrentTime(Packet* p) {
   return OkStatus();
 }
 
-}  // namespace base
 }  // namespace aistreams

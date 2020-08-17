@@ -23,12 +23,10 @@
 #include "aistreams/proto/packet.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Set the packet timestamp to the current local time.
 Status SetToCurrentTime(Packet*);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_UTIL_PACKET_UTILS_H_

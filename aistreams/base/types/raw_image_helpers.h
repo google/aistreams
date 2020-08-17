@@ -21,7 +21,6 @@
 #include "aistreams/proto/types/raw_image.pb.h"
 
 namespace aistreams {
-namespace base {
 
 // Get the number of channels for the given image format.
 int GetNumChannels(const RawImageFormat& format);
@@ -32,7 +31,6 @@ size_t GetBufferSize(const RawImageDescriptor& desc);
 // Validate the given descriptor.
 Status Validate(const RawImageDescriptor& desc);
 
-}  // namespace base
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_TYPES_RAW_IMAGE_HELPERS_H_

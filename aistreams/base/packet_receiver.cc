@@ -22,7 +22,6 @@
 #include "aistreams/port/status_macros.h"
 
 namespace aistreams {
-namespace base {
 
 PacketReceiver::PacketReceiver(const Options& options) : options_(options) {}
 
@@ -151,5 +150,4 @@ Status PacketReceiver::Receive(Packet* packet) {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

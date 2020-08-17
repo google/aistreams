@@ -21,7 +21,6 @@
 #include "aistreams/port/status_macros.h"
 
 namespace aistreams {
-namespace base {
 
 PacketSender::PacketSender(const Options& options) : options_(options) {}
 
@@ -111,5 +110,4 @@ PacketSender::~PacketSender() {
   }
 }
 
-}  // namespace base
 }  // namespace aistreams

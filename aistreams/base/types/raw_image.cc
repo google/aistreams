@@ -20,7 +20,6 @@
 #include "aistreams/port/status.h"
 
 namespace aistreams {
-namespace base {
 
 RawImage::RawImage() : RawImage(0, 0, RAW_IMAGE_FORMAT_SRGB) {}
 
@@ -62,5 +61,4 @@ RawImage::RawImage(const RawImageDescriptor &desc, std::string &&bytes) {
   data_ = std::move(bytes);
 }
 
-}  // namespace base
 }  // namespace aistreams
