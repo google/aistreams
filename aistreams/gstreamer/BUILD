@@ -1,0 +1,43 @@
+package(
+    default_visibility = ["//aistreams:__subpackages__"],
+    licenses = ["notice"],  # Apache 2.0
+)
+
+cc_library(
+    name = "gstreamer_runner",
+    srcs = [
+        "gstreamer_runner.cc",
+    ],
+    hdrs = [
+        "gstreamer_runner.h",
+    ],
+    deps = [
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@gstreamer",
+    ],
+)
+
+cc_test(
+    name = "gstreamer_runner_test",
+    srcs = ["gstreamer_runner_test.cc"],
+    data = ["//testdata:exported_testdata"],
+    deps = [
+        ":gstreamer_runner",
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/port:gtest_main",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/util:file_helpers",
+        "//aistreams/util:producer_consumer_queue",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+        "@gstreamer",
+    ],
+)
