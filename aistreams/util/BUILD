@@ -22,3 +22,25 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
     ],
 )
+
+cc_library(
+    name = "producer_consumer_queue",
+    hdrs = [
+        "producer_consumer_queue.h",
+    ],
+    deps = [
+        "//aistreams/port:logging",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "producer_consumer_queue_test",
+    srcs = ["producer_consumer_queue_test.cc"],
+    linkstatic = 1,
+    deps = [
+        ":producer_consumer_queue",
+        "//aistreams/port:gtest_main",
+    ],
+)
