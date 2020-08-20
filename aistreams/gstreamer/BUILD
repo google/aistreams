@@ -41,3 +41,43 @@ cc_test(
         "@gstreamer",
     ],
 )
+
+cc_library(
+    name = "type_utils",
+    srcs = [
+        "type_utils.cc",
+    ],
+    hdrs = [
+        "type_utils.h",
+    ],
+    deps = [
+        "//aistreams/base/types",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@gstreamer",
+    ],
+)
+
+cc_test(
+    name = "type_utils_test",
+    srcs = ["type_utils_test.cc"],
+    data = ["//testdata:exported_testdata"],
+    deps = [
+        ":gstreamer_runner",
+        ":type_utils",
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/port:gtest_main",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/util:file_helpers",
+        "//aistreams/util:producer_consumer_queue",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+        "@gstreamer",
+    ],
+)
