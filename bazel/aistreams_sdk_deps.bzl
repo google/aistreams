@@ -64,10 +64,10 @@ def aistreams_sdk_deps():
         url = "https://github.com/google/protobuf/archive/09745575a923640154bcf307fba8aedff47f240a.tar.gz",  # 2019-08-19
     )
 
-  # This requires gstreamer to be installed on your system.
-  # TODO: Ok to start, but consider building from source with bazel.
-  native.new_local_repository(
-      name = "gstreamer",
-      build_file = "//third_party:gstreamer.BUILD",
-      path = "/usr",
-  )
+    # This requires gstreamer to be installed on your system.
+    # TODO: Ok to start, but consider building from source with bazel.
+    native.new_local_repository(
+        name = "gstreamer",
+        build_file = "//third_party:gstreamer.BUILD",
+        path = "/usr",
+    )

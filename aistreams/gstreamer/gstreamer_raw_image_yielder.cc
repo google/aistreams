@@ -109,9 +109,11 @@ Status GstreamerRawImageYielder::SignalEOS() {
   }
 
   // Deliver EOS. Ignore any callback errors.
-  status = options_.callback(EOSStatus());
-  if (!status.ok()) {
-    LOG(ERROR) << status;
+  if (options_.callback) {
+    status = options_.callback(EOSStatus());
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+    }
   }
   return OkStatus();
 }
