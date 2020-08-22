@@ -16,9 +16,10 @@
 
 #include <time.h>
 
+#include "absl/strings/str_format.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
-#include "aistreams/port/status.h"
+#include "aistreams/proto/types/control_signal_packet_type_descriptor.pb.h"
 
 namespace aistreams {
 
@@ -33,6 +34,38 @@ Status SetToCurrentTime(Packet* p) {
   p->mutable_header()->mutable_timestamp()->set_seconds(ts.tv_sec);
   p->mutable_header()->mutable_timestamp()->set_nanos(ts.tv_nsec);
   return OkStatus();
+}
+
+PacketTypeId GetPacketTypeId(const Packet& p) {
+  return p.header().type().type_id();
+}
+
+bool IsControlSignal(const Packet& p) {
+  return GetPacketTypeId(p) == PACKET_TYPE_CONTROL_SIGNAL;
+}
+
+StatusOr<ControlSignalTypeId> GetControlSignalTypeId(const Packet& p) {
+  if (!IsControlSignal(p)) {
+    return InvalidArgumentError(
+        absl::StrFormat("Given the non-control signal packet type %s",
+                        PacketTypeId_Name(GetPacketTypeId(p))));
+  }
+  ControlSignalPacketTypeDescriptor control_signal_packet_type_desc;
+  if (!p.header().type().type_descriptor().UnpackTo(
+          &control_signal_packet_type_desc)) {
+    return InvalidArgumentError(
+        "Failed to Unpack the type decriptor as a "
+        "ControlSignalTypeDescriptor");
+  }
+  return control_signal_packet_type_desc.type_id();
+}
+
+bool IsEos(const Packet& p) {
+  auto control_signal_type_statusor = GetControlSignalTypeId(p);
+  if (!control_signal_type_statusor.ok()) {
+    return false;
+  }
+  return control_signal_type_statusor.ValueOrDie() == CONTROL_SIGNAL_EOS;
 }
 
 }  // namespace aistreams

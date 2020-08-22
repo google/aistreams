@@ -20,12 +20,29 @@
 #include <vector>
 
 #include "aistreams/port/status.h"
+#include "aistreams/port/statusor.h"
 #include "aistreams/proto/packet.pb.h"
+#include "aistreams/proto/types/control_signal.pb.h"
 
 namespace aistreams {
 
 // Set the packet timestamp to the current local time.
 Status SetToCurrentTime(Packet*);
+
+// Get the PacketTypeId.
+PacketTypeId GetPacketTypeId(const Packet&);
+
+// Check if the given Packet is a control signal packet.
+bool IsControlSignal(const Packet&);
+
+// Get the ControlSignalTypeId of the given packet.
+//
+// This may not succeed for any number of reason (e.g. p is not a control
+// signal). In these cases, the status will tell the reason.
+StatusOr<ControlSignalTypeId> GetControlSignalTypeId(const Packet& p);
+
+// Check if the given Packet is an EOS control signal packet.
+bool IsEos(const Packet&);
 
 }  // namespace aistreams
 
