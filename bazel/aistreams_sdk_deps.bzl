@@ -49,11 +49,11 @@ def aistreams_sdk_deps():
     maybe(
         http_archive,
         name = "com_github_google_googletest",
-        strip_prefix = "googletest-release-1.8.1",
+        strip_prefix = "googletest-release-1.10.0",
         urls = [
-            "https://github.com/google/googletest/archive/release-1.8.1.tar.gz",
+            "https://github.com/google/googletest/archive/release-1.10.0.tar.gz",
         ],
-        sha256 = "9bf1fe5182a604b4135edc1a425ae356c9ad15e9b23f9f12a02e80184c3a249c",
+        sha256 = "9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb",
     )
 
     maybe(
