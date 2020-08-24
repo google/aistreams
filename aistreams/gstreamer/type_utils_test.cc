@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "aistreams/base/packet.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/base/types/raw_image.h"
 #include "aistreams/gstreamer/gstreamer_runner.h"
@@ -202,6 +203,159 @@ TEST(TypeUtils, RgbaFailTest) {
     auto raw_image_statusor = ToRawImage(std::move(gstreamer_buffer));
     EXPECT_FALSE(raw_image_statusor.ok());
     LOG(ERROR) << raw_image_statusor.status();
+  }
+}
+
+TEST(TypeUtils, GstreamerBufferPacketToGstreamerBuffer) {
+  {
+    GstreamerBuffer gstreamer_buffer_src =
+        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
+            .ValueOrDie();
+    auto packet = MakePacket(gstreamer_buffer_src).ValueOrDie();
+    auto gstreamer_buffer_statusor = ToGstreamerBuffer(std::move(packet));
+    EXPECT_TRUE(gstreamer_buffer_statusor.ok());
+    auto gstreamer_buffer_dst =
+        std::move(gstreamer_buffer_statusor).ValueOrDie();
+    EXPECT_EQ(gstreamer_buffer_src.get_caps(), gstreamer_buffer_dst.get_caps());
+    std::string data_src = std::move(gstreamer_buffer_src).ReleaseBuffer();
+    std::string data_dst = std::move(gstreamer_buffer_dst).ReleaseBuffer();
+    EXPECT_EQ(data_src, data_dst);
+  }
+}
+
+TEST(TypeUtils, JpegFramePacketToGstreamerBuffer) {
+  {
+    GstreamerBuffer gstreamer_buffer_src =
+        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
+            .ValueOrDie();
+    GstreamerBuffer gstreamer_buffer_tmp(gstreamer_buffer_src);
+    JpegFrame jpeg_frame(std::move(gstreamer_buffer_tmp).ReleaseBuffer());
+    auto packet = MakePacket(jpeg_frame).ValueOrDie();
+    auto gstreamer_buffer_statusor = ToGstreamerBuffer(std::move(packet));
+    EXPECT_TRUE(gstreamer_buffer_statusor.ok());
+    auto gstreamer_buffer_dst =
+        std::move(gstreamer_buffer_statusor).ValueOrDie();
+    EXPECT_EQ(gstreamer_buffer_src.get_caps(), gstreamer_buffer_dst.get_caps());
+    std::string data_src = std::move(gstreamer_buffer_src).ReleaseBuffer();
+    std::string data_dst = std::move(gstreamer_buffer_dst).ReleaseBuffer();
+    EXPECT_EQ(data_src, data_dst);
+  }
+}
+
+TEST(TypeUtils, NoPaddingRgbRawImagePacketToGstreamerBuffer) {
+  // Get a gstreamer raw image by decoding a JPEG.
+  ProducerConsumerQueue<GstreamerBuffer> pcqueue(1);
+  {
+    // Setup a pipeline to convert a jpeg into an RGB image.
+    GstreamerRunnerOptions options;
+    options.processing_pipeline_string = kRgbPipeline;
+    options.appsrc_caps_string = kJpegCapsString;
+
+    GstreamerRunner runner(options);
+    Status status = runner.SetReceiver(
+        [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
+          pcqueue.TryEmplace(std::move(gstreamer_buffer));
+          return OkStatus();
+        });
+    EXPECT_TRUE(runner.Start().ok());
+
+    // Decode the jpeg into an RGB image and close the runner.
+    GstreamerBuffer gstreamer_buffer =
+        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
+            .ValueOrDie();
+    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
+    EXPECT_TRUE(runner.End().ok());
+  }
+
+  // Actual test starts here.
+  {
+    GstreamerBuffer gstreamer_buffer_src;
+    EXPECT_TRUE(pcqueue.TryPop(gstreamer_buffer_src, absl::Seconds(1)));
+    auto raw_image_statusor = ToRawImage(gstreamer_buffer_src);
+    EXPECT_TRUE(raw_image_statusor.ok());
+    RawImage r_src = std::move(raw_image_statusor).ValueOrDie();
+    EXPECT_EQ(r_src.format(), RAW_IMAGE_FORMAT_SRGB);
+    EXPECT_EQ(r_src.height(), 512);
+    EXPECT_EQ(r_src.width(), 512);
+    EXPECT_EQ(r_src.channels(), 3);
+    EXPECT_EQ(r_src.size(), 786432);
+
+    auto packet = MakePacket(r_src).ValueOrDie();
+    auto gstreamer_buffer_statusor = ToGstreamerBuffer(std::move(packet));
+    EXPECT_TRUE(gstreamer_buffer_statusor.ok());
+    auto gstreamer_buffer_dst =
+        std::move(gstreamer_buffer_statusor).ValueOrDie();
+    raw_image_statusor = ToRawImage(std::move(gstreamer_buffer_dst));
+    EXPECT_TRUE(raw_image_statusor.ok());
+    RawImage r_dst = std::move(raw_image_statusor).ValueOrDie();
+    EXPECT_EQ(r_dst.format(), r_src.format());
+    EXPECT_EQ(r_dst.height(), r_src.height());
+    EXPECT_EQ(r_dst.width(), r_src.width());
+    EXPECT_EQ(r_dst.channels(), r_src.channels());
+    EXPECT_EQ(r_dst.size(), r_src.size());
+  }
+}
+
+TEST(TypeUtils, PaddingRgbRawImagePacketToGstreamerBuffer) {
+  // Get a gstreamer raw image by decoding a JPEG.
+  ProducerConsumerQueue<GstreamerBuffer> pcqueue(1);
+  {
+    // Setup a pipeline to convert a jpeg into an RGB image.
+    GstreamerRunnerOptions options;
+    options.processing_pipeline_string = kRgbPipeline;
+    options.appsrc_caps_string = kJpegCapsString;
+
+    GstreamerRunner runner(options);
+    Status status = runner.SetReceiver(
+        [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
+          pcqueue.TryEmplace(std::move(gstreamer_buffer));
+          return OkStatus();
+        });
+    EXPECT_TRUE(runner.Start().ok());
+
+    // Decode the jpeg into an RGB image and close the runner.
+    GstreamerBuffer gstreamer_buffer =
+        GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
+            .ValueOrDie();
+    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
+    EXPECT_TRUE(runner.End().ok());
+  }
+
+  // Actual test starts here.
+  {
+    GstreamerBuffer gstreamer_buffer_src;
+    EXPECT_TRUE(pcqueue.TryPop(gstreamer_buffer_src, absl::Seconds(1)));
+    auto raw_image_statusor = ToRawImage(gstreamer_buffer_src);
+    EXPECT_TRUE(raw_image_statusor.ok());
+    RawImage r_src = std::move(raw_image_statusor).ValueOrDie();
+    EXPECT_EQ(r_src.format(), RAW_IMAGE_FORMAT_SRGB);
+    EXPECT_EQ(r_src.height(), 243);
+    EXPECT_EQ(r_src.width(), 243);
+    EXPECT_EQ(r_src.channels(), 3);
+    EXPECT_EQ(r_src.size(), 177147);
+
+    auto packet = MakePacket(r_src).ValueOrDie();
+    auto gstreamer_buffer_statusor = ToGstreamerBuffer(std::move(packet));
+    EXPECT_TRUE(gstreamer_buffer_statusor.ok());
+    auto gstreamer_buffer_dst =
+        std::move(gstreamer_buffer_statusor).ValueOrDie();
+    EXPECT_EQ(gstreamer_buffer_dst.size(), 177876);
+    raw_image_statusor = ToRawImage(std::move(gstreamer_buffer_dst));
+    EXPECT_TRUE(raw_image_statusor.ok());
+    RawImage r_dst = std::move(raw_image_statusor).ValueOrDie();
+    EXPECT_EQ(r_dst.format(), r_src.format());
+    EXPECT_EQ(r_dst.height(), r_src.height());
+    EXPECT_EQ(r_dst.width(), r_src.width());
+    EXPECT_EQ(r_dst.channels(), r_src.channels());
+    EXPECT_EQ(r_dst.size(), r_src.size());
+  }
+}
+
+TEST(TypeUtils, EosPacketToGstreamerBufferFail) {
+  {
+    auto packet = MakeEosPacket("no reason").ValueOrDie();
+    auto gstreamer_buffer_statusor = ToGstreamerBuffer(packet);
+    EXPECT_FALSE(gstreamer_buffer_statusor.ok());
   }
 }
 

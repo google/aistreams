@@ -21,17 +21,22 @@
 
 #include "absl/strings/str_format.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
+#include "aistreams/base/types/jpeg_frame.h"
+#include "aistreams/base/types/raw_image.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 #include "aistreams/port/statusor.h"
 #include "aistreams/proto/types/raw_image.pb.h"
 
+#define ROUND_UP_4(num) (((num) + 3) & ~0x3)
+
 namespace aistreams {
 
 namespace {
 
-constexpr char kRawImageCapsString[] = "video/x-raw";
+constexpr char kRawImageGstreamerMimeType[] = "video/x-raw";
+constexpr char kJpegGstreamerMimeType[] = "image/jpeg";
 
 // Structure that contains all metadata deducible from a GstreamerBuffer whose
 // caps is of type video/x-raw.
@@ -66,7 +71,7 @@ Status ParseAsRawImageCaps(const std::string& caps_string,
   // Verify this is indeed a raw image caps.
   GstStructure* structure = gst_caps_get_structure(caps, 0);
   std::string media_type(gst_structure_get_name(structure));
-  if (media_type != kRawImageCapsString) {
+  if (media_type != kRawImageGstreamerMimeType) {
     gst_caps_unref(caps);
     return InvalidArgumentError(absl::StrFormat(
         "Given a GstCaps of \"%s\" which is not a raw image caps string",
@@ -139,6 +144,83 @@ StatusOr<RawImage> ToRgbRawImage(const GstreamerRawImageInfo& info,
   return r;
 }
 
+StatusOr<GstreamerBuffer> GstreamerBufferPacketToGstreamerBuffer(Packet p) {
+  PacketAs<GstreamerBuffer> packet_as(std::move(p));
+  if (!packet_as.ok()) {
+    LOG(ERROR) << packet_as.status();
+    return InternalError(
+        "Failed to adapt supposedly a GstreamerBuffer packet into a "
+        "GstreamerBuffer");
+  }
+  return std::move(packet_as).ValueOrDie();
+}
+
+StatusOr<GstreamerBuffer> JpegPacketToGstreamerBuffer(Packet p) {
+  PacketAs<JpegFrame> packet_as(std::move(p));
+  if (!packet_as.ok()) {
+    LOG(ERROR) << packet_as.status();
+    return InternalError(
+        "Failed to adapt supposedly a JpegFrame packet into a JpegFrame");
+  }
+  JpegFrame jpeg_frame = std::move(packet_as).ValueOrDie();
+  GstreamerBuffer gstreamer_buffer;
+  gstreamer_buffer.set_caps_string(kJpegGstreamerMimeType);
+  gstreamer_buffer.assign(std::move(jpeg_frame).ReleaseBuffer());
+  return gstreamer_buffer;
+}
+
+StatusOr<GstreamerBuffer> RgbRawImageToGstreamerBuffer(RawImage r) {
+  // Set the caps string.
+  GstreamerBuffer gstreamer_buffer;
+  GstCaps* caps = gst_caps_new_simple(
+      kRawImageGstreamerMimeType, "format", G_TYPE_STRING, "RGB", "width",
+      G_TYPE_INT, r.width(), "height", G_TYPE_INT, r.height(), NULL);
+  gchar* caps_string = gst_caps_to_string(caps);
+  gstreamer_buffer.set_caps_string(caps_string);
+  g_free(caps_string);
+  gst_caps_unref(caps);
+
+  // Fast path for when padding is not needed.
+  // See
+  // https://gstreamer.freedesktop.org/documentation/additional/design/mediatype-video-raw.html?gi-language=c
+  // for more details. In this case, RGB images must pad each row up to the
+  // nearest size divisible by 4.
+  if (!(r.width() * r.channels() % 4)) {
+    gstreamer_buffer.assign(std::move(r).ReleaseBuffer());
+    return gstreamer_buffer;
+  }
+
+  // Slow path for when padding is needed.
+  int row_size = r.width() * r.channels();
+  int row_stride = ROUND_UP_4(row_size);
+  std::string bytes;
+  bytes.resize(row_stride * r.height());
+  for (int i = 0; i < r.height(); ++i) {
+    std::copy(r.data() + row_size * i, r.data() + row_size * (i + 1),
+              const_cast<char*>(bytes.data() + row_stride * i));
+  }
+  gstreamer_buffer.assign(std::move(bytes));
+  return gstreamer_buffer;
+}
+
+StatusOr<GstreamerBuffer> RawImagePacketToGstreamerBuffer(Packet p) {
+  PacketAs<RawImage> packet_as(std::move(p));
+  if (!packet_as.ok()) {
+    LOG(ERROR) << packet_as.status();
+    return InternalError(
+        "Failed to adapt supposedly a RawImage packet into a RawImage");
+  }
+  RawImage raw_image = std::move(packet_as).ValueOrDie();
+
+  if (raw_image.format() != RAW_IMAGE_FORMAT_SRGB) {
+    return UnimplementedError(absl::StrFormat(
+        "We currently do not support raw images with your given format (%s)",
+        RawImageFormat_Name(raw_image.format())));
+  }
+
+  return RgbRawImageToGstreamerBuffer(std::move(raw_image));
+}
+
 }  // namespace
 
 StatusOr<RawImage> ToRawImage(GstreamerBuffer gstreamer_buffer) {
@@ -156,6 +238,23 @@ StatusOr<RawImage> ToRawImage(GstreamerBuffer gstreamer_buffer) {
     default:
       return UnimplementedError(absl::StrFormat(
           "We currently do not support \"%s\"", info.format_name));
+  }
+}
+
+StatusOr<GstreamerBuffer> ToGstreamerBuffer(Packet p) {
+  PacketTypeId packet_type_id = GetPacketTypeId(p);
+  switch (packet_type_id) {
+    case PACKET_TYPE_GSTREAMER_BUFFER:
+      return GstreamerBufferPacketToGstreamerBuffer(std::move(p));
+    case PACKET_TYPE_JPEG:
+      return JpegPacketToGstreamerBuffer(std::move(p));
+    case PACKET_TYPE_RAW_IMAGE:
+      return RawImagePacketToGstreamerBuffer(std::move(p));
+    default:
+      return InvalidArgumentError(
+          absl::StrFormat("The given Packet has a type (%s) that cannot be "
+                          "converted into a GstreamerBuffer",
+                          PacketTypeId_Name(packet_type_id)));
   }
 }
 

@@ -92,6 +92,7 @@ cc_library(
         "type_utils.h",
     ],
     deps = [
+        "//aistreams/base:packet",
         "//aistreams/base/types",
         "//aistreams/port:logging",
         "//aistreams/port:status",

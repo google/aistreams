@@ -17,6 +17,7 @@
 #ifndef AISTREAMS_GSTREAMER_TYPE_UTILS_H_
 #define AISTREAMS_GSTREAMER_TYPE_UTILS_H_
 
+#include "aistreams/base/packet.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/base/types/raw_image.h"
 #include "aistreams/port/status.h"
@@ -31,6 +32,14 @@ namespace aistreams {
 // that a GstreamerBuffer can contain any caps whatsoever.
 // In any case, the returned status will indicate why a conversion failed.
 StatusOr<RawImage> ToRawImage(GstreamerBuffer gstreamer_buffer);
+
+// Convert the given Packet into a GstreamerBuffer.
+// You should pass an rvalue for `packet` if possible.
+//
+// The conversion may not always be possible; we only define this for packets
+// for which this makes sense (e.g. Jpegs, RawImages, etc.) The status will
+// indicate the reason if the conversion fails.
+StatusOr<GstreamerBuffer> ToGstreamerBuffer(Packet packet);
 
 }  // namespace aistreams
 
