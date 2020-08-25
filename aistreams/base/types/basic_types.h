@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef AISTREAMS_CC_AISTREAMS_LITE_H_
-#define AISTREAMS_CC_AISTREAMS_LITE_H_
+#ifndef AISTREAMS_BASE_TYPES_BASIC_TYPES_H_
+#define AISTREAMS_BASE_TYPES_BASIC_TYPES_H_
 
-#include "aistreams/base/connection_options.h"
-#include "aistreams/base/management_client.h"
-#include "aistreams/base/packet.h"
-#include "aistreams/base/types/basic_types.h"
+#include <string>
 
-#endif  // AISTREAMS_CC_AISTREAMS_LITE_H_
+#include "aistreams/base/types/eos.h"
+#include "aistreams/base/types/gstreamer_buffer.h"
+#include "aistreams/base/types/jpeg_frame.h"
+#include "aistreams/base/types/raw_image.h"
+// All protobuf message types are considered basic.
+
+#endif  // AISTREAMS_BASE_TYPES_BASIC_TYPES_H_

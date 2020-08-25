@@ -6,8 +6,8 @@ package(
 cc_library(
     name = "packet_types",
     srcs = [
-        "eos_packet_type.h",
         "eos_packet_type.cc",
+        "eos_packet_type.h",
         "gstreamer_buffer_packet_type.cc",
         "gstreamer_buffer_packet_type.h",
         "jpeg_frame_packet_type.cc",
@@ -23,7 +23,7 @@ cc_library(
         "packet_types.h",
     ],
     deps = [
-        "//aistreams/base/types:elementary",
+        "//aistreams/base/types:basic_types",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",

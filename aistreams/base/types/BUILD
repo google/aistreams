@@ -7,13 +7,16 @@ cc_library(
     name = "types",
     visibility = ["//visibility:public"],
     deps = [
-        ":elementary",
+        ":basic_types",
         "//aistreams/base/types/packet_types",
     ],
 )
 
 cc_library(
-    name = "elementary",
+    name = "basic_types",
+    hdrs = [
+        "basic_types.h",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":eos",
