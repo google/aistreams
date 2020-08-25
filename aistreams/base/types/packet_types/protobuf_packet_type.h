@@ -112,8 +112,8 @@ Status UnpackPayload(const Packet& p, T* t) {
   if (protobuf_packet_type_desc.specific_message_type_name() !=
       t->GetTypeName()) {
     return InvalidArgumentError(absl::StrFormat(
-        "Given a protobuf packet of containing message of the specific type %s "
-        "but we are trying to receive it with a protobuf of the type %s",
+        "Given a protobuf packet containing the specific type %s, "
+        "but we are trying to receive it with a protobuf of type %s",
         protobuf_packet_type_desc.specific_message_type_name(),
         t->GetTypeName()));
   }

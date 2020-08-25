@@ -64,3 +64,27 @@ cc_proto_library(
     name = "gstreamer_buffer_packet_type_descriptor_cc_proto",
     deps = [":gstreamer_buffer_packet_type_descriptor_proto"],
 )
+
+proto_library(
+    name = "control_signal_proto",
+    srcs = ["control_signal.proto"],
+)
+
+cc_proto_library(
+    name = "control_signal_cc_proto",
+    deps = [":control_signal_proto"],
+)
+
+proto_library(
+    name = "control_signal_packet_type_descriptor_proto",
+    srcs = ["control_signal_packet_type_descriptor.proto"],
+    deps = [
+        ":control_signal_proto",
+        "@com_google_protobuf//:any_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "control_signal_packet_type_descriptor_cc_proto",
+    deps = [":control_signal_packet_type_descriptor_proto"],
+)

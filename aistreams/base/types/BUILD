@@ -16,6 +16,7 @@ cc_library(
     name = "elementary",
     visibility = ["//visibility:public"],
     deps = [
+        ":eos",
         ":gstreamer_buffer",
         ":jpeg_frame",
         ":raw_image",
@@ -110,5 +111,17 @@ cc_test(
         "//aistreams/port:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
+    name = "eos",
+    hdrs = ["eos.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/proto/types:control_signal_cc_proto",
+        "@com_google_absl//absl/strings",
     ],
 )

@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include "absl/strings/str_format.h"
+#include "aistreams/base/types/packet_types/eos_packet_type.h"
 #include "aistreams/base/types/packet_types/gstreamer_buffer_packet_type.h"
 #include "aistreams/base/types/packet_types/jpeg_frame_packet_type.h"
 #include "aistreams/base/types/packet_types/packet_type_traits.h"
@@ -85,9 +86,10 @@ Status ValidateUnpackArgs(const Packet& p, T* t) {
   }
   if (p.header().type().type_id() != PacketTypeTraits<T>::packet_type_id()) {
     return InvalidArgumentError(absl::StrFormat(
-        "Given a Packet with type id %d while the destination object requires "
-        "a type id of %d",
-        p.header().type().type_id(), PacketTypeTraits<T>::packet_type_id()));
+        "Given a Packet of type %s while the destination object requires "
+        "a type of %s",
+        PacketTypeId_Name(p.header().type().type_id()),
+        PacketTypeId_Name(PacketTypeTraits<T>::packet_type_id())));
   }
   return OkStatus();
 }

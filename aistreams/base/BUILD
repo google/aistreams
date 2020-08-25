@@ -6,6 +6,7 @@ package(
 cc_library(
     name = "packet",
     srcs = [
+        "make_packet.cc",
         "make_packet.h",
         "packet_as.h",
     ],
@@ -19,6 +20,7 @@ cc_library(
         "//aistreams/port:status",
         "//aistreams/port:statusor",
         "//aistreams/proto:packet_cc_proto",
+        "@com_google_absl//absl/strings",
     ],
 )
 

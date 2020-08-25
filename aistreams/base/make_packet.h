@@ -19,6 +19,7 @@
 
 #include <utility>
 
+#include "absl/strings/string_view.h"
 #include "aistreams/base/types/packet_types/packet_types.h"
 #include "aistreams/base/util/packet_utils.h"
 #include "aistreams/port/status.h"
@@ -47,6 +48,9 @@ StatusOr<Packet> MakePacket(T&& t, PacketHeader header);
 // timestamp unaltered.
 template <typename T>
 StatusOr<Packet> MakePacket(T&& t, PacketHeader header, bool set_current_time);
+
+// Create a EOS Packet with the given reason.
+StatusOr<Packet> MakeEosPacket(absl::string_view reason);
 
 // ----------------------------------------------------------------------------
 // Implementation below.

@@ -26,6 +26,7 @@ enum PacketTypeId {
   PACKET_TYPE_PROTOBUF = 3;
   PACKET_TYPE_STRING = 4;
   PACKET_TYPE_GSTREAMER_BUFFER = 5;
+  PACKET_TYPE_CONTROL_SIGNAL = 6;
 }
 
 // The message that represents the data type of a packet.

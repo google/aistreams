@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include "aistreams/base/types/eos.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/base/types/jpeg_frame.h"
 #include "aistreams/base/types/raw_image.h"
@@ -13,6 +14,7 @@
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
 #include "aistreams/proto/packet.pb.h"
+#include "aistreams/proto/types/control_signal.pb.h"
 #include "aistreams/proto/types/raw_image.pb.h"
 #include "aistreams/proto/types/raw_image_packet_type_descriptor.pb.h"
 
@@ -275,6 +277,62 @@ TEST(PacketTest, PacketAsGstreamerBufferTest) {
     GstreamerBuffer dst = std::move(packet_as).ValueOrDie();
     EXPECT_EQ(caps, dst.get_caps());
     EXPECT_EQ(bytes, std::string(dst.data(), dst.size()));
+  }
+}
+
+TEST(PacketTest, MakePacketEosTest) {
+  {
+    std::string reason = "some reason";
+    EosValue eos_value;
+    eos_value.set_reason(reason);
+    Eos eos(eos_value);
+    auto packet_status_or = MakePacket(eos);
+    EXPECT_TRUE(packet_status_or.ok());
+    auto packet = std::move(packet_status_or).ValueOrDie();
+    EXPECT_EQ(packet.header().type().type_id(), PACKET_TYPE_CONTROL_SIGNAL);
+
+    EosValue dst_eos_value;
+    EXPECT_TRUE(dst_eos_value.ParseFromString(packet.payload()));
+    EXPECT_EQ(eos_value.reason(), dst_eos_value.reason());
+    EXPECT_EQ(dst_eos_value.reason(), reason);
+  }
+}
+
+TEST(PacketTest, PacketAsEosTest) {
+  {
+    std::string reason = "some reason";
+    Eos eos;
+    eos.set_reason(reason);
+    auto packet_status_or = MakePacket(eos);
+    EXPECT_TRUE(packet_status_or.ok());
+
+    PacketAs<Eos> packet_as(std::move(packet_status_or).ValueOrDie());
+    EXPECT_TRUE(packet_as.ok());
+    PacketHeader header = packet_as.header();
+    EXPECT_EQ(header.type().type_id(), PACKET_TYPE_CONTROL_SIGNAL);
+
+    eos = std::move(packet_as).ValueOrDie();
+    EXPECT_EQ(eos.reason(), reason);
+  }
+  {
+    std::string src("hey!");
+    auto packet_status_or = MakePacket(src);
+    PacketAs<Eos> packet_as(std::move(packet_status_or).ValueOrDie());
+    EXPECT_FALSE(packet_as.ok());
+  }
+}
+
+TEST(PacketTest, MakeEosPacketTest) {
+  {
+    std::string reason = "some reason";
+    auto packet_status_or = MakeEosPacket(reason);
+    EXPECT_TRUE(packet_status_or.ok());
+    PacketAs<Eos> packet_as(std::move(packet_status_or).ValueOrDie());
+    EXPECT_TRUE(packet_as.ok());
+    PacketHeader header = packet_as.header();
+    EXPECT_EQ(header.type().type_id(), PACKET_TYPE_CONTROL_SIGNAL);
+    Eos eos = std::move(packet_as).ValueOrDie();
+    EXPECT_EQ(eos.reason(), reason);
   }
 }
 
