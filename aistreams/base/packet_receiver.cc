@@ -74,10 +74,15 @@ Status PacketReceiver::UnarySubscribe(const PacketCallback& callback) {
       LOG(ERROR) << "Unary rpc returned non-ok status: "
                  << rpc_status.message();
     } else {
-      Status callback_status = callback(std::move(packet));
-      if (!callback_status.ok()) {
-        LOG(ERROR) << "PacketCallback returned non-ok status: "
-                   << callback_status.message();
+      Status s = callback(std::move(packet));
+      if (!s.ok()) {
+        if (IsCancelled(s)) {
+          LOG(INFO) << "The subscriber has requested to cancel";
+          break;
+        } else {
+          LOG(ERROR) << "PacketCallback returned non-ok status: "
+                     << s.message();
+        }
       }
     }
 
@@ -93,7 +98,12 @@ Status PacketReceiver::StreamingSubscribe(const PacketCallback& callback) {
   while (streaming_reader_->Read(&packet)) {
     Status s = callback(std::move(packet));
     if (!s.ok()) {
-      LOG(ERROR) << "PacketCallback returned non-ok status: " << s.message();
+      if (IsCancelled(s)) {
+        LOG(INFO) << "The subscriber has requested to cancel";
+        break;
+      } else {
+        LOG(ERROR) << "PacketCallback returned non-ok status: " << s.message();
+      }
     }
   }
   return OkStatus();

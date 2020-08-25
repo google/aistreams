@@ -29,6 +29,8 @@
 namespace aistreams {
 
 // The callback type used to subscribe to incoming packets.
+//
+// Return a kCancelled Status to shut down.
 using PacketCallback = std::function<Status(Packet)>;
 
 // Use this class to subscribe to a stream for packets.
