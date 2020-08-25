@@ -63,6 +63,11 @@ inline ::aistreams::Status PermissionDeniedError(absl::string_view message) {
                              message);
 }
 
+inline ::aistreams::Status ResourceExhaustedError(absl::string_view message) {
+  return ::aistreams::Status(::aistreams::StatusCode::kResourceExhausted,
+                             message);
+}
+
 inline ::aistreams::Status UnimplementedError(absl::string_view message) {
   return ::aistreams::Status(::aistreams::StatusCode::kUnimplemented, message);
 }
@@ -81,6 +86,10 @@ inline bool IsCancelled(const ::aistreams::Status& status) {
 
 inline bool IsNotFound(const ::aistreams::Status& status) {
   return status.code() == ::aistreams::StatusCode::kNotFound;
+}
+
+inline bool IsResourceExhausted(const ::aistreams::Status& status) {
+  return status.code() == ::aistreams::StatusCode::kResourceExhausted;
 }
 
 }  // namespace aistreams
