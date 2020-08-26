@@ -18,6 +18,7 @@
 #define AISTREAMS_UTIL_PRODUCER_CONSUMER_QUEUE_H_
 
 #include <deque>
+#include <memory>
 #include <utility>
 
 #include "absl/synchronization/mutex.h"
@@ -64,6 +65,17 @@ class ProducerConsumerQueue {
   // Otherwise, returns false and causes no side effects.
   template <typename... Args>
   bool TryEmplace(Args&&... args) ABSL_LOCKS_EXCLUDED(mu_);
+
+  // If the queue is not full, adds/transfers the object pointed to by `p`.
+  //
+  // On success, return true and `p` will contain a nullptr. On failure, return
+  // false and `p` will be unaffected.
+  bool TryPush(std::unique_ptr<T>& p) ABSL_LOCKS_EXCLUDED(mu_);
+
+  // Like TryPush(std::unique_ptr<T>&), except wait up to `timeout` for space to
+  // become available.
+  bool TryPush(std::unique_ptr<T>& p, absl::Duration timeout)
+      ABSL_LOCKS_EXCLUDED(mu_);
 
   // Removes the oldest element from the queue and receives it in `elem`.
   // This blocks the calling thread if the queue is empty.
@@ -146,6 +158,28 @@ bool ProducerConsumerQueue<T>::TryEmplace(Args&&... args) {
     }
   }
   InternalEmplace(std::forward<Args>(args)...);
+  return true;
+}
+
+template <typename T>
+bool ProducerConsumerQueue<T>::TryPush(std::unique_ptr<T>& p) {
+  return TryPush(p, absl::Duration());
+}
+
+template <typename T>
+bool ProducerConsumerQueue<T>::TryPush(std::unique_ptr<T>& p,
+                                       absl::Duration timeout) {
+  absl::MutexLock lock(&mu_);
+  if (IsLimitedCapacity()) {
+    if (q_.size() >= static_cast<size_t>(capacity_) &&
+        timeout > absl::Duration()) {
+      cv_not_full_.WaitWithTimeout(&mu_, timeout);
+    }
+    if (q_.size() >= static_cast<size_t>(capacity_)) {
+      return false;
+    }
+  }
+  InternalEmplace(std::move(*p.release()));
   return true;
 }
 
