@@ -5,3 +5,5 @@ bazel-testlogs
 bazel-workdir
 bazel-aistreams-sdk
 ddcterm
+.clwb
+.vscode

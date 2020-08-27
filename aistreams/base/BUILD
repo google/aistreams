@@ -61,6 +61,7 @@ cc_library(
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",
+        "//aistreams/util:constants",
     ],
 )
 

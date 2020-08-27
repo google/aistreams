@@ -14,18 +14,15 @@
 
 #include "aistreams/base/stream_channel.h"
 
-#include <utility>
-
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
+#include "aistreams/util/constants.h"
 
 namespace aistreams {
 
-namespace {
-constexpr char kStreamMetadataKeyName[] = "stream";
-}
+using ::aistreams::constants::kStreamMetadataKeyName;
 
 StreamChannel::StreamChannel(const Options& options) : options_(options) {}
 

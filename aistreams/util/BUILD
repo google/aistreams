@@ -44,3 +44,11 @@ cc_test(
         "//aistreams/port:gtest_main",
     ],
 )
+
+cc_library(
+    name = "constants",
+    hdrs = [
+        "constants.h",
+    ],
+    visibility = ["//visibility:public"],
+)
