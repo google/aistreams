@@ -25,16 +25,24 @@
 
 namespace aistreams {
 
-// This grants a consumer stake to a shared producer/consumer queue.
+// The ReceiverQueue grants a consumer share to a producer/consumer queue.
 template <typename T>
 class ReceiverQueue {
  public:
-  // Removes the oldest element from the queue and receives it in `elem`. If the
-  // queue is empty, wait up to `timeout`.
+  // Removes the oldest element from the queue and receives it in `elem`. Waits
+  // up to `timeout` for the queue to become non-empty.
   bool TryPop(T& elem, absl::Duration timeout);
 
   // Construct an instance owning a share to the given producer/consumer queue.
   ReceiverQueue(std::shared_ptr<ProducerConsumerQueue<T>>);
+
+  // Copy-control. Movable but not copyable.
+  ReceiverQueue() = default;
+  ~ReceiverQueue() = default;
+  ReceiverQueue(ReceiverQueue&&) = default;
+  ReceiverQueue& operator=(ReceiverQueue&&) = default;
+  ReceiverQueue(const ReceiverQueue&) = delete;
+  ReceiverQueue& operator=(const ReceiverQueue&) = delete;
 
  private:
   std::shared_ptr<ProducerConsumerQueue<T>> pcqueue_;
