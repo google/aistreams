@@ -9,8 +9,8 @@ cc_library(
         "receivers.cc",
     ],
     hdrs = [
-        "receivers.h",
         "receiver_queue.h",
+        "receivers.h",
     ],
     deps = [
         "//aistreams/base:connection_options",
@@ -21,6 +21,27 @@ cc_library(
         "//aistreams/port:status",
         "//aistreams/port:statusor",
         "//aistreams/util:producer_consumer_queue",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "senders",
+    srcs = [
+        "senders.cc",
+    ],
+    hdrs = [
+        "senders.h",
+    ],
+    deps = [
+        "//aistreams/base:connection_options",
+        "//aistreams/base:packet",
+        "//aistreams/base:packet_sender",
+        "//aistreams/base/types:basic_types",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
     ],
