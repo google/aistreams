@@ -47,6 +47,11 @@ class PacketReceiver {
     // this empty if you are directly connecting to the stream server.
     std::string stream_name;
 
+    // The receiver name for the stream server to identify each receiver.
+    //
+    // TODO: Randomly generate a receiver_name if it is not specified.
+    std::string receiver_name;
+
     // Set this true to use unary rpc to receive packets.
     //
     // This is mainly useful for approximate profiling/packet tracing with

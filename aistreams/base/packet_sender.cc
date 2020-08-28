@@ -27,6 +27,7 @@ PacketSender::PacketSender(const Options& options) : options_(options) {}
 Status PacketSender::Initialize() {
   StreamChannel::Options stream_channel_options;
   stream_channel_options.connection_options = options_.connection_options;
+  stream_channel_options.stream_name = options_.stream_name;
   auto stream_channel_status_or = StreamChannel::Create(stream_channel_options);
   if (!stream_channel_status_or.ok()) {
     LOG(ERROR) << stream_channel_status_or.status();

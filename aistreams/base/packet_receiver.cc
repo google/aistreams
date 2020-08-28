@@ -28,6 +28,7 @@ PacketReceiver::PacketReceiver(const Options& options) : options_(options) {}
 Status PacketReceiver::Initialize() {
   StreamChannel::Options stream_channel_options;
   stream_channel_options.connection_options = options_.connection_options;
+  stream_channel_options.stream_name = options_.stream_name;
   auto stream_channel_status_or = StreamChannel::Create(stream_channel_options);
   if (!stream_channel_status_or.ok()) {
     LOG(ERROR) << stream_channel_status_or.status();
@@ -40,6 +41,7 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
+  streaming_request_.set_consumer_name(options_.receiver_name);
   if (!options_.enable_unary_rpc) {
     LOG(INFO) << "Using streaming rpc to receive packets";
     auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
