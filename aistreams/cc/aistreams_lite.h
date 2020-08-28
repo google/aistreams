@@ -21,5 +21,7 @@
 #include "aistreams/base/management_client.h"
 #include "aistreams/base/packet.h"
 #include "aistreams/base/types/basic_types.h"
+#include "aistreams/base/wrappers/receivers.h"
+#include "aistreams/base/wrappers/senders.h"
 
 #endif  // AISTREAMS_CC_AISTREAMS_LITE_H_
