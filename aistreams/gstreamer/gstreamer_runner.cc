@@ -87,6 +87,7 @@ GstFlowReturn on_new_sample_from_sink(
   gst_sample_unref(sample);
 
   // Deliver the GstreamerBuffer using the callback.
+  // TODO: Decide on special status codes to pause/halt the pipeline.
   Status status = (*receiver_callback)(std::move(gstreamer_buffer));
   if (!status.ok()) {
     LOG(ERROR) << status.message();

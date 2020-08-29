@@ -19,3 +19,25 @@ cc_library(
         "//aistreams/proto:packet_cc_proto",
     ],
 )
+
+cc_library(
+    name = "decoded_receivers",
+    srcs = [
+        "decoded_receivers.cc",
+    ],
+    hdrs = [
+        "decoded_receivers.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/base/types",
+        "//aistreams/cc:aistreams_lite",
+        "//aistreams/gstreamer:gstreamer_raw_image_yielder",
+        "//aistreams/gstreamer:type_utils",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)

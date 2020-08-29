@@ -78,6 +78,7 @@ Status GstreamerRawImageYielder::Initialize() {
 
     // Otherwise, try to convert the raw image.
     // Leave the statusor interpretation to the recipient.
+    // TODO: Decide on some special status codes to pause/halt the pipeline.
     auto raw_image_status_or = ToRawImage(std::move(gstreamer_buffer));
     options_.callback(std::move(raw_image_status_or));
     return OkStatus();
