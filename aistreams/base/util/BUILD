@@ -50,3 +50,18 @@ cc_library(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "raw_image_utils",
+    srcs = ["raw_image_utils.cc"],
+    hdrs = ["raw_image_utils.h"],
+    deps = [
+        "//aistreams/base/types:raw_image",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/proto/types:raw_image_cc_proto",
+        "//aistreams/util:file_helpers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)

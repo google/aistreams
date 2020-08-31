@@ -6,6 +6,7 @@ filegroup(
     name = "exported_testdata",
     srcs = glob([
         "jpegs/*.jpg",
+        "ppms/*.ppm",
         "pngs/*.png",
     ]),
 )
