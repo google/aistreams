@@ -79,6 +79,7 @@ cc_library(
         "//aistreams/proto:packet_cc_proto",
         "//aistreams/proto:stream_cc_grpc",
         "//aistreams/proto:stream_cc_proto",
+        "@com_google_absl//absl/random",
         "@com_google_absl//absl/time",
     ],
 )

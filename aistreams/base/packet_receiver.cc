@@ -16,12 +16,29 @@
 
 #include <utility>
 
+#include "absl/random/random.h"
 #include "absl/time/clock.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 
 namespace aistreams {
+
+namespace {
+constexpr int kRandomConsumerNameLength = 8;
+constexpr char kRandomConsumerChars[] =
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+void RandomConsumerName(std::string* s) {
+  thread_local static absl::BitGen bitgen;
+  s->resize(kRandomConsumerNameLength);
+  for (int i = 0; i < kRandomConsumerNameLength; ++i) {
+    size_t rand_i = absl::Uniform(bitgen, 0u, sizeof(kRandomConsumerChars) - 2);
+    s[i] = kRandomConsumerChars[rand_i];
+  }
+  return;
+}
+}  // namespace
 
 PacketReceiver::PacketReceiver(const Options& options) : options_(options) {}
 
@@ -41,7 +58,13 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
-  streaming_request_.set_consumer_name(options_.receiver_name);
+  if (options_.receiver_name.empty()) {
+    std::string random_receiver_name;
+    RandomConsumerName(&random_receiver_name);
+    streaming_request_.set_consumer_name(random_receiver_name);
+  } else {
+    streaming_request_.set_consumer_name(options_.receiver_name);
+  }
   if (!options_.enable_unary_rpc) {
     LOG(INFO) << "Using streaming rpc to receive packets";
     auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
