@@ -132,7 +132,7 @@ StatusOr<RawImage> ToRgbRawImage(const GstreamerRawImageInfo& info,
   RawImage r(info.height, info.width, RAW_IMAGE_FORMAT_SRGB);
   for (int i = 0; i < info.height; ++i) {
     int src_row_start = info.rstride * i;
-    int dst_row_start = info.width * i;
+    int dst_row_start = info.width * info.components * i;
     for (int j = 0; j < info.width; ++j) {
       int src_pix_start = src_row_start + info.pstride * j;
       int dst_pix_start = dst_row_start + info.components * j;
