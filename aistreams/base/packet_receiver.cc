@@ -34,7 +34,7 @@ void RandomConsumerName(std::string* s) {
   s->resize(kRandomConsumerNameLength);
   for (int i = 0; i < kRandomConsumerNameLength; ++i) {
     size_t rand_i = absl::Uniform(bitgen, 0u, sizeof(kRandomConsumerChars) - 2);
-    s[i] = kRandomConsumerChars[rand_i];
+    (*s)[i] = kRandomConsumerChars[rand_i];
   }
   return;
 }

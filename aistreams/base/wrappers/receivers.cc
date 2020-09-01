@@ -79,7 +79,12 @@ Status MakePacketReceiverQueue(const ReceiverOptions& options,
             p = std::make_unique<Packet>();
             s = packet_receiver->Receive(p.get());
             if (!s.ok()) {
-              LOG(ERROR) << s;
+              packet_queue->Emplace(
+                  MakeEosPacket(
+                      absl::StrFormat(
+                          "Could not receive a packet from the server: %s",
+                          s.message()))
+                      .ValueOrDie());
               break;
             }
           }

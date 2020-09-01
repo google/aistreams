@@ -41,7 +41,6 @@ gboolean gst_bus_message_callback(GstBus* bus, GstMessage* message,
   gchar* debug_info;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
-      LOG(INFO) << "Got EOS; shutting down event loop";
       g_main_loop_quit(loop);
       break;
     case GST_MESSAGE_ERROR:
