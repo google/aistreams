@@ -51,6 +51,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "grpc_helpers_test",
+    srcs = [
+        "grpc_helpers_test.cc",
+    ],
+    deps = [
+        ":grpc_helpers",
+        "//aistreams/port:gtest_main",
+    ],
+)
+
 cc_library(
     name = "raw_image_utils",
     srcs = ["raw_image_utils.cc"],
