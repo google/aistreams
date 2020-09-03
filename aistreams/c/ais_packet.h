@@ -38,6 +38,11 @@ typedef struct AIS_Packet AIS_Packet;
 // Returns a nullptr on failure.
 extern AIS_Packet* AIS_NewPacket(AIS_Status* ais_status);
 
+// Returns a new EOS packet holding the given reason.
+//
+// Returns a nullptr on failure.
+extern AIS_Packet* AIS_NewEosPacket(const char* reason, AIS_Status* ais_status);
+
 // Return a new packet of type AIS_PACKET_TYPE_STRING that holds the contents of
 // the given null terminated string *without* including the null character.
 //
@@ -69,6 +74,13 @@ extern AIS_Packet* AIS_NewGstreamerBufferPacket(
 
 // Delete a previously created status object.
 extern void AIS_DeletePacket(AIS_Packet*);
+
+// Returns whether the given ais_packet is an EOS indicator.
+//
+// If `reason` is not NULL and `ais_packet` is an EOS, then `reason` will
+// indicate why the EOS was sent. The ownership of `reason` is transferred to
+// the caller.
+extern unsigned char AIS_IsEos(const AIS_Packet* ais_packet, char** reason);
 
 #ifdef __cplusplus
 } /* end extern "C" */

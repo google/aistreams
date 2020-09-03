@@ -49,6 +49,7 @@ cc_library(
         ":ais_status",
         "//aistreams/base:packet",
         "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/base/util:packet_utils",
         "//aistreams/port:status",
         "//aistreams/proto:packet_cc_proto",
         "//aistreams/proto/types:packet_type_cc_proto",

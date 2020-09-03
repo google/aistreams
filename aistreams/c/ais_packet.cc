@@ -14,12 +14,15 @@
 
 #include "aistreams/c/ais_packet.h"
 
+#include <string.h>
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "aistreams/base/packet.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
+#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/c/ais_gstreamer_buffer.h"
 #include "aistreams/c/ais_gstreamer_buffer_internal.h"
 #include "aistreams/c/ais_packet_internal.h"
@@ -28,6 +31,8 @@
 #include "aistreams/port/status.h"
 
 using aistreams::GstreamerBuffer;
+using aistreams::IsEos;
+using aistreams::MakeEosPacket;
 using aistreams::MakePacket;
 using aistreams::OkStatus;
 using aistreams::Packet;
@@ -36,6 +41,20 @@ void AIS_DeletePacket(AIS_Packet* p) { delete p; }
 
 AIS_Packet* AIS_NewPacket(AIS_Status* ais_status) {
   auto ais_packet = std::make_unique<AIS_Packet>();
+  ais_status->status = OkStatus();
+  return ais_packet.release();
+}
+
+extern AIS_Packet* AIS_NewEosPacket(const char* reason,
+                                    AIS_Status* ais_status) {
+  auto packet_status_or = MakeEosPacket(reason);
+  if (!packet_status_or.ok()) {
+    ais_status->status = packet_status_or.status();
+    return nullptr;
+  }
+
+  auto ais_packet = std::make_unique<AIS_Packet>();
+  ais_packet->packet = std::move(packet_status_or).ValueOrDie();
   ais_status->status = OkStatus();
   return ais_packet.release();
 }
@@ -81,4 +100,16 @@ AIS_Packet* AIS_NewGstreamerBufferPacket(
   ais_packet->packet = std::move(packet_status_or).ValueOrDie();
   ais_status->status = OkStatus();
   return ais_packet.release();
+}
+
+unsigned char AIS_IsEos(const AIS_Packet* ais_packet, char** reason) {
+  if (reason == nullptr) {
+    return static_cast<unsigned char>(IsEos(ais_packet->packet));
+  }
+
+  std::string reason_string;
+  auto is_eos =
+      static_cast<unsigned char>(IsEos(ais_packet->packet, &reason_string));
+  *reason = strdup(reason_string.c_str());
+  return is_eos;
 }

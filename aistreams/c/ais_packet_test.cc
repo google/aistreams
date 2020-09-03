@@ -63,4 +63,37 @@ TEST(CAPI, AIS_PacketTest) {
   AIS_DeleteStatus(ais_status);
 }
 
+TEST(CAPI, AIS_PacketEosTest) {
+  {
+    AIS_Status* ais_status = AIS_NewStatus();
+    std::string src_reason = "some reason";
+    AIS_Packet* ais_packet = AIS_NewEosPacket(src_reason.c_str(), ais_status);
+    EXPECT_NE(ais_packet, nullptr);
+    char* dst_reason_cstr;
+    EXPECT_TRUE(AIS_IsEos(ais_packet, &dst_reason_cstr));
+    std::string dst_reason(dst_reason_cstr);
+    free(dst_reason_cstr);
+    AIS_DeletePacket(ais_packet);
+    AIS_DeleteStatus(ais_status);
+    EXPECT_EQ(src_reason, dst_reason);
+  }
+  {
+    AIS_Status* ais_status = AIS_NewStatus();
+    AIS_GstreamerBuffer* ais_gstreamer_buffer_src = AIS_NewGstreamerBuffer();
+    AIS_GstreamerBufferSetCapsString("video/x-raw", ais_gstreamer_buffer_src);
+    std::string src = "hello";
+    AIS_GstreamerBufferAssign(src.c_str(), src.size(),
+                              ais_gstreamer_buffer_src);
+    AIS_Packet* ais_packet =
+        AIS_NewGstreamerBufferPacket(ais_gstreamer_buffer_src, ais_status);
+    AIS_DeleteGstreamerBuffer(ais_gstreamer_buffer_src);
+    EXPECT_NE(ais_packet, nullptr);
+
+    EXPECT_FALSE(AIS_IsEos(ais_packet, nullptr));
+
+    AIS_DeletePacket(ais_packet);
+    AIS_DeleteStatus(ais_status);
+  }
+}
+
 }  // namespace aistreams
