@@ -17,7 +17,7 @@ cc_library(
         ":ais_status",
         "//aistreams/base:connection_options",
         "//aistreams/base:packet_receiver",
-        "//aistreams/base:packet_sender",
+        "//aistreams/base/wrappers:senders",
         "//aistreams/port:status",
         "//aistreams/port:statusor",
     ],

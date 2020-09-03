@@ -14,7 +14,7 @@
 
 #include "aistreams/c/c_api.h"
 
-#include "aistreams/base/packet_sender.h"
+#include "aistreams/base/wrappers/senders.h"
 #include "aistreams/c/ais_packet_internal.h"
 #include "aistreams/c/ais_status_internal.h"
 #include "aistreams/c/c_api_internal.h"
@@ -27,6 +27,7 @@ using aistreams::OkStatus;
 using aistreams::Packet;
 using aistreams::PacketReceiver;
 using aistreams::PacketSender;
+using aistreams::SenderOptions;
 using aistreams::Status;
 using aistreams::StatusOr;
 
@@ -76,17 +77,19 @@ void AIS_SetSslRootCertPath(const char* ssl_root_cert_path,
 
 AIS_Sender* AIS_NewSender(const AIS_ConnectionOptions* options,
                           const char* stream_name, AIS_Status* ais_status) {
-  PacketSender::Options packet_sender_options;
-  packet_sender_options.connection_options = options->connection_options;
-  packet_sender_options.stream_name = stream_name;
-  auto packet_sender_statusor = PacketSender::Create(packet_sender_options);
-  if (!packet_sender_statusor.ok()) {
-    ais_status->status = packet_sender_statusor.status();
+  SenderOptions sender_options;
+  sender_options.connection_options = options->connection_options;
+  sender_options.stream_name = stream_name;
+
+  std::unique_ptr<PacketSender> sender;
+  auto status = MakePacketSender(sender_options, &sender);
+  if (!status.ok()) {
+    ais_status->status = status;
     return nullptr;
   }
 
   auto ais_sender = std::make_unique<AIS_Sender>();
-  ais_sender->packet_sender = std::move(packet_sender_statusor).ValueOrDie();
+  ais_sender->packet_sender = std::move(sender);
   ais_status->status = OkStatus();
   return ais_sender.release();
 }
