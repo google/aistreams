@@ -17,24 +17,12 @@
 #include <time.h>
 
 #include "absl/strings/str_format.h"
+#include "aistreams/base/packet.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/proto/types/control_signal_packet_type_descriptor.pb.h"
 
 namespace aistreams {
-
-Status SetToCurrentTime(Packet* p) {
-  if (p == nullptr) {
-    return InvalidArgumentError("Given a nullptr to a Packet");
-  }
-  timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    return UnknownError("clock_gettime failed");
-  }
-  p->mutable_header()->mutable_timestamp()->set_seconds(ts.tv_sec);
-  p->mutable_header()->mutable_timestamp()->set_nanos(ts.tv_nsec);
-  return OkStatus();
-}
 
 PacketTypeId GetPacketTypeId(const Packet& p) {
   return p.header().type().type_id();
@@ -60,12 +48,27 @@ StatusOr<ControlSignalTypeId> GetControlSignalTypeId(const Packet& p) {
   return control_signal_packet_type_desc.type_id();
 }
 
-bool IsEos(const Packet& p) {
+bool IsEos(const Packet& p) { return IsEos(p, nullptr); }
+
+bool IsEos(const Packet& p, std::string* reason) {
+  // Check if it is a EOS control signal.
   auto control_signal_type_statusor = GetControlSignalTypeId(p);
-  if (!control_signal_type_statusor.ok()) {
+  if (!control_signal_type_statusor.ok() ||
+      control_signal_type_statusor.ValueOrDie() != CONTROL_SIGNAL_EOS) {
     return false;
   }
-  return control_signal_type_statusor.ValueOrDie() == CONTROL_SIGNAL_EOS;
+
+  if (reason != nullptr) {
+    PacketAs<Eos> packet_as(p);
+    if (!packet_as.ok()) {
+      LOG(ERROR) << packet_as.status();
+      LOG(ERROR) << "PacketAs<Eos> failed to unpack an EOS packet";
+    } else {
+      Eos eos = std::move(packet_as).ValueOrDie();
+      *reason = eos.reason();
+    }
+  }
+  return true;
 }
 
 }  // namespace aistreams

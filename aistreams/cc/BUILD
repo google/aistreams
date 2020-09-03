@@ -14,6 +14,7 @@ cc_library(
         "//aistreams/base:management_client",
         "//aistreams/base:packet",
         "//aistreams/base/types",
+        "//aistreams/base/util:packet_utils",
         "//aistreams/base/wrappers:receivers",
         "//aistreams/base/wrappers:senders",
         "//aistreams/proto:packet_cc_proto",

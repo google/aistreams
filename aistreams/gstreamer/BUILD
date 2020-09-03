@@ -94,6 +94,7 @@ cc_library(
     deps = [
         "//aistreams/base:packet",
         "//aistreams/base/types",
+        "//aistreams/base/util:packet_utils",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",

@@ -20,12 +20,28 @@
 
 #include "aistreams/base/types/eos.h"
 #include "aistreams/base/types/packet_types/packet_types.h"
-#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 #include "aistreams/port/statusor.h"
 
 namespace aistreams {
+
+namespace internal {
+
+Status SetToCurrentTime(Packet* p) {
+  if (p == nullptr) {
+    return InvalidArgumentError("Given a nullptr to a Packet");
+  }
+  timespec ts;
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    return UnknownError("clock_gettime failed");
+  }
+  p->mutable_header()->mutable_timestamp()->set_seconds(ts.tv_sec);
+  p->mutable_header()->mutable_timestamp()->set_nanos(ts.tv_nsec);
+  return OkStatus();
+}
+
+}  // namespace internal
 
 StatusOr<Packet> MakeEosPacket(absl::string_view reason) {
   Eos eos;

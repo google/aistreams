@@ -8,6 +8,7 @@ cc_library(
     srcs = ["packet_utils.cc"],
     hdrs = ["packet_utils.h"],
     deps = [
+        "//aistreams/base:packet",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",

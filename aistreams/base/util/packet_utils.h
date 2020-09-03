@@ -26,9 +26,6 @@
 
 namespace aistreams {
 
-// Set the packet timestamp to the current local time.
-Status SetToCurrentTime(Packet*);
-
 // Get the PacketTypeId.
 PacketTypeId GetPacketTypeId(const Packet&);
 
@@ -43,6 +40,13 @@ StatusOr<ControlSignalTypeId> GetControlSignalTypeId(const Packet& p);
 
 // Check if the given Packet is an EOS control signal packet.
 bool IsEos(const Packet&);
+
+// Check if the given Packet is an EOS control signal packet.
+//
+// If not return false with no side effects. Otherwise, returns true and if
+// `reason` is not nullptr, it will set its pointee to indicate why the Eos was
+// sent.
+bool IsEos(const Packet&, std::string* reason);
 
 }  // namespace aistreams
 

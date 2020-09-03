@@ -23,6 +23,7 @@
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/base/types/jpeg_frame.h"
 #include "aistreams/base/types/raw_image.h"
+#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"

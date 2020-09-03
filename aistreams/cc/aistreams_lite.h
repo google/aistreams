@@ -21,6 +21,7 @@
 #include "aistreams/base/management_client.h"
 #include "aistreams/base/packet.h"
 #include "aistreams/base/types/basic_types.h"
+#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/base/wrappers/receivers.h"
 #include "aistreams/base/wrappers/senders.h"
 

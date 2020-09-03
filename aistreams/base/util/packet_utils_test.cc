@@ -1,5 +1,7 @@
 // Copyright 2020 Google Inc.
 
+#include "aistreams/base/util/packet_utils.h"
+
 #include <memory>
 #include <string>
 
@@ -22,6 +24,9 @@ TEST(PacketUtilsTest, IsEosTest) {
     auto packet = std::move(packet_status_or).ValueOrDie();
     EXPECT_TRUE(IsControlSignal(packet));
     EXPECT_TRUE(IsEos(packet));
+    std::string reason_cpy;
+    EXPECT_TRUE(IsEos(packet, &reason_cpy));
+    EXPECT_EQ(reason, reason_cpy);
   }
   {
     std::string caps("video/x-raw");

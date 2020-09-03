@@ -21,7 +21,6 @@
 
 #include "absl/strings/string_view.h"
 #include "aistreams/base/types/packet_types/packet_types.h"
-#include "aistreams/base/util/packet_utils.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 #include "aistreams/port/statusor.h"
@@ -55,13 +54,17 @@ StatusOr<Packet> MakeEosPacket(absl::string_view reason);
 // ----------------------------------------------------------------------------
 // Implementation below.
 
+namespace internal {
+Status SetToCurrentTime(Packet*);
+}  // namespace internal
+
 template <typename T>
 StatusOr<Packet> MakePacket(T&& t, PacketHeader header, bool set_current_time) {
   Packet p;
   *p.mutable_header() = std::move(header);
   AIS_RETURN_IF_ERROR(Pack(std::forward<T>(t), &p));
   if (set_current_time) {
-    AIS_RETURN_IF_ERROR(SetToCurrentTime(&p));
+    AIS_RETURN_IF_ERROR(internal::SetToCurrentTime(&p));
   }
   return p;
 }
