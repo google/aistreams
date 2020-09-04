@@ -18,7 +18,7 @@
  * SECTION: element-aissrc
  * @title: aissrc
  *
- * The aissrc receives packets from a stream server.
+ * The aissrc receives packets from the AI Streams server.
  *
  * <refsect2>
  * <title>Example launch line</title>
@@ -26,8 +26,6 @@
  * gst-launch-1.0 -v aissrc target-address=localhost:50053 ! decodebin !
  * autovideosink
  * ]|
- *
- * Receives packets from a stream server.
  * </refsect2>
  */
 
@@ -62,7 +60,8 @@ enum {
   PROP_0,
   PROP_TARGET_ADDRESS,
   PROP_STREAM_NAME,
-  PROP_CONSUMER_NAME,
+  PROP_RECEIVER_NAME,
+  PROP_TIMEOUT_IN_SEC,
   PROP_USE_INSECURE_CHANNEL,
   PROP_SSL_DOMAIN_NAME,
   PROP_SSL_ROOT_CERT_PATH,
@@ -91,27 +90,34 @@ static void ais_src_class_init(AisSrcClass *klass) {
 
   g_object_class_install_property(
       gobject_class, PROP_TARGET_ADDRESS,
-      g_param_spec_string("target-address",
-                          "Address (ip:port) to the stream server",
-                          "Address to the stream server", NULL,
+      g_param_spec_string("target-address", "Target address",
+                          "Address to the AI Streams instance", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_STREAM_NAME,
       g_param_spec_string("stream-name", "Stream name",
-                          "Name of the destination stream on the stream server",
+                          "Name of the stream from which to receive packets",
                           NULL, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
-      gobject_class, PROP_CONSUMER_NAME,
-      g_param_spec_string("consumer-name", "Stream server consumer name",
-                          "Consume name used to read from stream server", NULL,
+      gobject_class, PROP_RECEIVER_NAME,
+      g_param_spec_string("receiver-name", "Receiver name",
+                          "Receiver name used to read from stream server", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property(
+      gobject_class, PROP_TIMEOUT_IN_SEC,
+      g_param_spec_int("timeout-in-sec", "Timeout for the receiver",
+                       "Seconds to wait for a packet delivery. "
+                       "Negative values means forever",
+                       G_MININT, G_MAXINT, -1,
+                       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_USE_INSECURE_CHANNEL,
       g_param_spec_boolean("use-insecure-channel", "Use insecure channel",
-                           "Use an insecure channel", FALSE,
+                           "Use an insecure channel to connect", FALSE,
                            G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
@@ -144,7 +150,8 @@ static void ais_src_class_init(AisSrcClass *klass) {
 static void ais_src_init(AisSrc *src) {
   src->target_address = g_strdup("");
   src->stream_name = g_strdup("");
-  src->consumer_name = g_strdup("");
+  src->receiver_name = g_strdup("");
+  src->timeout_in_sec = -1;
   src->use_insecure_channel = FALSE;
   src->ssl_domain_name = g_strdup("");
   src->ssl_root_cert_path = g_strdup("");
@@ -176,11 +183,8 @@ static gboolean ais_src_set_target_address(AisSrc *src, const gchar *address,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `target_address' property when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'target_address' property on when the client "
+              "Changing the 'target_address' property when the client "
               "is already connected is not supported");
   return FALSE;
 }
@@ -193,40 +197,31 @@ null_address : {
 }
 
 /**
- * ais_src_set_consumer_name
+ * ais_src_set_receiver_name
  * @src: (not nullable): ais src object.
- * @consumer_name: stream server consumer name.
+ * @receiver_name: stream server receiver name.
  * Returns: TRUE on success, FALSE otherwise.
  */
-static gboolean ais_src_set_consumer_name(AisSrc *src,
-                                          const gchar *consumer_name,
+static gboolean ais_src_set_receiver_name(AisSrc *src,
+                                          const gchar *receiver_name,
                                           GError **error) {
   if (src->ais_receiver != NULL) {
     goto stream_already_open;
   }
 
-  if (consumer_name == NULL) {
-    goto empty_consumer_name;
+  g_free(src->receiver_name);
+  if (receiver_name != NULL) {
+    src->receiver_name = g_strdup(receiver_name);
+  } else {
+    src->receiver_name = g_strdup("");
   }
-
-  g_free(src->consumer_name);
-  src->consumer_name = g_strdup(consumer_name);
   return TRUE;
 
 /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `consumer_name' property when the stream server "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the `consumer_name' property when the stream "
+              "Changing the `receiver_name' property when the stream "
               "server is already connected is not supported");
-  return FALSE;
-}
-
-empty_consumer_name : {
-  GST_ELEMENT_ERROR(src, RESOURCE, NOT_FOUND, ("No consume name was specified"),
-                    (NULL));
   return FALSE;
 }
 }
@@ -254,11 +249,8 @@ static gboolean ais_src_set_stream_name(AisSrc *src, const gchar *stream_name,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `stream_name' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'stream_name' property on when the client "
+              "Changing the 'stream_name' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -288,11 +280,8 @@ static gboolean ais_src_set_ssl_domain_name(AisSrc *src,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `ssl_domain_name' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'ssl_domain_name' property on when the client "
+              "Changing the 'ssl_domain_name' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -322,9 +311,6 @@ static gboolean ais_src_set_ssl_root_cert_path(AisSrc *src,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `ssl_root_cert_path' property when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
               "Changing the 'ssl_root_cert_path' property when the client "
               "already connected is not supported");
@@ -343,8 +329,11 @@ static void ais_src_set_property(GObject *object, guint property_id,
     case PROP_STREAM_NAME:
       ais_src_set_stream_name(src, g_value_get_string(value), NULL);
       break;
-    case PROP_CONSUMER_NAME:
-      ais_src_set_consumer_name(src, g_value_get_string(value), NULL);
+    case PROP_RECEIVER_NAME:
+      ais_src_set_receiver_name(src, g_value_get_string(value), NULL);
+      break;
+    case PROP_TIMEOUT_IN_SEC:
+      src->timeout_in_sec = g_value_get_int(value);
       break;
     case PROP_USE_INSECURE_CHANNEL:
       src->use_insecure_channel = g_value_get_boolean(value);
@@ -371,8 +360,11 @@ static void ais_src_get_property(GObject *object, guint property_id,
     case PROP_STREAM_NAME:
       g_value_set_string(value, src->stream_name);
       break;
-    case PROP_CONSUMER_NAME:
-      g_value_set_string(value, src->consumer_name);
+    case PROP_RECEIVER_NAME:
+      g_value_set_string(value, src->receiver_name);
+      break;
+    case PROP_TIMEOUT_IN_SEC:
+      g_value_set_int(value, src->timeout_in_sec);
       break;
     case PROP_USE_INSECURE_CHANNEL:
       g_value_set_boolean(value, src->use_insecure_channel);
@@ -396,7 +388,7 @@ void ais_src_dispose(GObject *object) {
 
   g_free(src->target_address);
   g_free(src->stream_name);
-  g_free(src->consumer_name);
+  g_free(src->receiver_name);
   g_free(src->ssl_domain_name);
   g_free(src->ssl_root_cert_path);
 }
@@ -406,12 +398,19 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
 
   AIS_Packet *ais_packet = NULL;
   AIS_PacketAs *ais_packet_as = NULL;
+  GstFlowReturn ret = GST_FLOW_OK;
 
   ais_packet = AIS_NewPacket(src->ais_status);
-  // FIXME
-  AIS_ReceivePacket(src->ais_receiver, ais_packet, -1, src->ais_status);
+  AIS_ReceivePacket(src->ais_receiver, ais_packet, src->timeout_in_sec,
+                    src->ais_status);
   if (AIS_GetCode(src->ais_status) != AIS_OK) {
+    ret = GST_FLOW_ERROR;
     goto failed_receive_packet;
+  }
+
+  if (AIS_IsEos(ais_packet, NULL)) {
+    ret = GST_FLOW_EOS;
+    goto finalize;
   }
 
   ais_packet_as = AIS_NewGstreamerBufferPacketAs(ais_packet, src->ais_status);
@@ -427,7 +426,7 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
   GstCaps *new_caps = gst_caps_from_string(caps_string);
   GstCaps *caps = gst_pad_get_current_caps(GST_BASE_SRC(src)->srcpad);
   if (caps == NULL || gst_caps_is_equal(caps, new_caps) == FALSE) {
-    g_print("Setting caps to %s", caps_string);
+    g_print("Setting caps to %s\n", caps_string);
     gst_base_src_set_caps(GST_BASE_SRC(src), new_caps);
   }
   if (caps != NULL) {
@@ -450,7 +449,7 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
 finalize:
   AIS_DeleteGstreamerBufferPacketAs(ais_packet_as);
   AIS_DeletePacket(ais_packet);
-  return GST_FLOW_OK;
+  return ret;
 
 failed_receive_packet : {
   GST_ELEMENT_ERROR(src, LIBRARY, FAILED, ("%s", AIS_Message(src->ais_status)),
@@ -483,9 +482,9 @@ static gboolean ais_src_start(GstBaseSrc *bsrc) {
   AIS_SetSslDomainName(src->ssl_domain_name, src->ais_connection_options);
   AIS_SetSslRootCertPath(src->ssl_root_cert_path, src->ais_connection_options);
 
-  // FIXME
-  src->ais_receiver = AIS_NewReceiver(src->ais_connection_options,
-                                      src->stream_name, NULL, src->ais_status);
+  src->ais_receiver =
+      AIS_NewReceiver(src->ais_connection_options, src->stream_name,
+                      src->receiver_name, src->ais_status);
   if (src->ais_receiver == NULL) {
     goto failed_new_receiver;
   }
@@ -519,12 +518,12 @@ static gboolean plugin_init(GstPlugin *plugin) {
 #define PACKAGE "ais_package"
 #endif
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME "ais_package_name"
+#define PACKAGE_NAME "GStreamer"
 #endif
 #ifndef GST_PACKAGE_ORIGIN
-#define GST_PACKAGE_ORIGIN "http://nothing.org/"
+#define GST_PACKAGE_ORIGIN "https://gstreamer.freedesktop.org/"
 #endif
 
 GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, aissrc,
-                  "Stream server source", plugin_init, VERSION, "Proprietary",
+                  "AI Streams Source", plugin_init, VERSION, "Proprietary",
                   PACKAGE_NAME, GST_PACKAGE_ORIGIN)

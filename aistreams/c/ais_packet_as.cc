@@ -56,7 +56,9 @@ AIS_PacketAs* AIS_NewGstreamerBufferPacketAs(AIS_Packet* ais_packet,
 }
 
 void AIS_DeleteGstreamerBufferPacketAs(AIS_PacketAs* ais_packet_as) {
-  AIS_DeleteGstreamerBuffer(
-      (AIS_GstreamerBuffer*)ais_packet_as->ais_value_type);
+  if (ais_packet_as != nullptr) {
+    AIS_DeleteGstreamerBuffer(
+        (AIS_GstreamerBuffer*)ais_packet_as->ais_value_type);
+  }
   delete ais_packet_as;
 }

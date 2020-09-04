@@ -48,8 +48,13 @@ struct _AisSrc {
   /* The name of the server stream to read from. */
   gchar *stream_name;
 
-  /* A self identifying consumer name to the stream server. */
-  gchar *consumer_name;
+  /* A self identifying reciever name to the stream server. */
+  gchar *receiver_name;
+
+  /* The amount of time (in seconds) to wait for the server to deliver a packet.
+   * A negative value means to wait forever.
+   */
+  int timeout_in_sec;
 
   /* Options to configure SSL information.
    *
