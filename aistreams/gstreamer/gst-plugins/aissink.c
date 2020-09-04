@@ -17,16 +17,14 @@
 /**
  * SECTION:element-aissink
  *
- * The aissink sends packets to a stream server.
+ * The aissink sends packets to a stream on the AI Streams server.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 uridecodebin uri=<uri to some stream> ! strmvassink
- * target-address=<address to the server>
+ * gst-launch-1.0 uridecodebin uri=<uri to some stream> ! aissink
+ * target-address=<address to the server> stream-name=<name of your stream>
  * ]|
- *
- * Sends packets to a stream server.
  * </refsect2>
  */
 
@@ -90,14 +88,14 @@ static void ais_sink_class_init(AisSinkClass *klass) {
   g_object_class_install_property(
       gobject_class, PROP_TARGET_ADDRESS,
       g_param_spec_string("target-address", "Target address",
-                          "Address to the stream server", NULL,
+                          "Address to the AI Streams instance", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_STREAM_NAME,
       g_param_spec_string("stream-name", "Stream name",
-                          "Name of the destination stream on the stream server",
-                          NULL, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+                          "Name of the destination stream", NULL,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_USE_INSECURE_CHANNEL,
@@ -119,7 +117,7 @@ static void ais_sink_class_init(AisSinkClass *klass) {
 
   gst_element_class_set_static_metadata(
       GST_ELEMENT_CLASS(klass), "AI Streams sink", "Generic",
-      "Send packets to the stream server", "Google Inc");
+      "Send packets to AI Streams", "Google Inc");
 
   gst_element_class_add_static_pad_template(GST_ELEMENT_CLASS(klass),
                                             &ais_sink_sink_template);
@@ -166,11 +164,8 @@ static gboolean ais_sink_set_target_address(AisSink *sink, const gchar *address,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `target_address' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'target_address' property on when the client "
+              "Changing the 'target_address' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -206,11 +201,8 @@ static gboolean ais_sink_set_stream_name(AisSink *sink,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `stream_name' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'stream_name' property on when the client "
+              "Changing the 'stream_name' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -240,11 +232,8 @@ static gboolean ais_sink_set_ssl_domain_name(AisSink *sink,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `ssl_domain_name' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'ssl_domain_name' property on when the client "
+              "Changing the 'ssl_domain_name' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -274,11 +263,8 @@ static gboolean ais_sink_set_ssl_root_cert_path(AisSink *sink,
 
   /* Errors */
 stream_already_open : {
-  g_warning(
-      "Changing the `ssl_root_cert_path' property on when the client "
-      "is already connected is not supported");
   g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_STATE,
-              "Changing the 'ssl_root_cert_path' property on when the client "
+              "Changing the 'ssl_root_cert_path' property when the client "
               "already connected is not supported");
   return FALSE;
 }
@@ -365,9 +351,6 @@ static gboolean ais_sink_set_caps(GstBaseSink *bsink, GstCaps *caps) {
   return TRUE;
 }
 
-/* TODO(dschao): Figure out how to reconnect to the server if it becomes
- * temporarily unreachable.
- */
 static gboolean ais_sink_start(GstBaseSink *bsink) {
   AisSink *sink = AIS_SINK(bsink);
 
@@ -398,10 +381,29 @@ failed_new_sender : {
 
 static gboolean ais_sink_stop(GstBaseSink *bsink) {
   AisSink *sink = AIS_SINK(bsink);
+
+  AIS_Packet *packet = AIS_NewEosPacket("Sender sent EOS", sink->ais_status);
+  if (AIS_GetCode(sink->ais_status) != AIS_OK) {
+    goto failed_eos_send;
+  }
+  AIS_SendPacket(sink->ais_sender, packet, sink->ais_status);
+  if (AIS_GetCode(sink->ais_status) != AIS_OK) {
+    goto failed_eos_send;
+  }
+
+done:
+  AIS_DeletePacket(packet);
   AIS_DeleteSender(sink->ais_sender);
   AIS_DeleteStatus(sink->ais_status);
   AIS_DeleteConnectionOptions(sink->ais_connection_options);
   return TRUE;
+
+failed_eos_send : {
+  GST_ELEMENT_WARNING(sink, STREAM, FAILED,
+                      ("%s", AIS_Message(sink->ais_status)),
+                      ("%s", AIS_Message(sink->ais_status)));
+  goto done;
+}
 }
 
 static GstFlowReturn ais_sink_render(GstBaseSink *bsink, GstBuffer *buffer) {
@@ -474,12 +476,12 @@ static gboolean plugin_init(GstPlugin *plugin) {
 #define PACKAGE "ais_package"
 #endif
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME "ais_package_name"
+#define PACKAGE_NAME "GStreamer"
 #endif
 #ifndef GST_PACKAGE_ORIGIN
-#define GST_PACKAGE_ORIGIN "http://nothing.org/"
+#define GST_PACKAGE_ORIGIN "https://gstreamer.freedesktop.org/"
 #endif
 
 GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, aissink,
-                  "Stream server sink", plugin_init, VERSION, "Proprietary",
+                  "AI Streams Sink", plugin_init, VERSION, "Proprietary",
                   PACKAGE_NAME, GST_PACKAGE_ORIGIN)
