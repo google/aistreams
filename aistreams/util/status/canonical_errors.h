@@ -36,6 +36,11 @@ inline ::aistreams::Status CancelledError(absl::string_view message) {
   return ::aistreams::Status(::aistreams::StatusCode::kCancelled, message);
 }
 
+inline ::aistreams::Status DeadlineExceededError(absl::string_view message) {
+  return ::aistreams::Status(::aistreams::StatusCode::kDeadlineExceeded,
+                             message);
+}
+
 inline ::aistreams::Status InternalError(absl::string_view message) {
   return ::aistreams::Status(::aistreams::StatusCode::kInternal, message);
 }

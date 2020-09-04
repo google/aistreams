@@ -408,7 +408,8 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
   AIS_PacketAs *ais_packet_as = NULL;
 
   ais_packet = AIS_NewPacket(src->ais_status);
-  AIS_ReceivePacket(src->ais_receiver, ais_packet, src->ais_status);
+  // FIXME
+  AIS_ReceivePacket(src->ais_receiver, ais_packet, -1, src->ais_status);
   if (AIS_GetCode(src->ais_status) != AIS_OK) {
     goto failed_receive_packet;
   }
@@ -482,9 +483,9 @@ static gboolean ais_src_start(GstBaseSrc *bsrc) {
   AIS_SetSslDomainName(src->ssl_domain_name, src->ais_connection_options);
   AIS_SetSslRootCertPath(src->ssl_root_cert_path, src->ais_connection_options);
 
-  // TODO(dschao): Add the option to configure the consumer name.
+  // FIXME
   src->ais_receiver = AIS_NewReceiver(src->ais_connection_options,
-                                      src->stream_name, src->ais_status);
+                                      src->stream_name, NULL, src->ais_status);
   if (src->ais_receiver == NULL) {
     goto failed_new_receiver;
   }

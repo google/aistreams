@@ -14,6 +14,8 @@
 
 #include "aistreams/c/c_api.h"
 
+#include "absl/strings/str_format.h"
+#include "absl/time/time.h"
 #include "aistreams/base/wrappers/senders.h"
 #include "aistreams/c/ais_packet_internal.h"
 #include "aistreams/c/ais_status_internal.h"
@@ -23,13 +25,23 @@
 #include "aistreams/port/statusor.h"
 
 using aistreams::ConnectionOptions;
+using aistreams::DeadlineExceededError;
+using aistreams::MakePacketReceiverQueue;
+using aistreams::MakePacketSender;
 using aistreams::OkStatus;
 using aistreams::Packet;
-using aistreams::PacketReceiver;
 using aistreams::PacketSender;
+using aistreams::ReceiverOptions;
+using aistreams::ReceiverQueue;
 using aistreams::SenderOptions;
 using aistreams::Status;
 using aistreams::StatusOr;
+
+namespace {
+inline std::string ToString(const char* cstr) {
+  return (cstr == nullptr) ? "" : cstr;
+}
+}  // namespace
 
 extern "C" {
 
@@ -46,7 +58,7 @@ void AIS_DeleteConnectionOptions(AIS_ConnectionOptions* ais_options) {
 // Set the target address (ip:port) to the server.
 void AIS_SetTargetAddress(const char* target_address,
                           AIS_ConnectionOptions* ais_options) {
-  ais_options->connection_options.target_address = target_address;
+  ais_options->connection_options.target_address = ToString(target_address);
 }
 
 // Use an insecure connection to the server.
@@ -61,7 +73,8 @@ void AIS_SetUseInsecureChannel(unsigned char use_insecure_channel,
 // You are required to supply this if you do not use an insecure channel.
 void AIS_SetSslDomainName(const char* ssl_domain_name,
                           AIS_ConnectionOptions* ais_options) {
-  ais_options->connection_options.ssl_options.ssl_domain_name = ssl_domain_name;
+  ais_options->connection_options.ssl_options.ssl_domain_name =
+      ToString(ssl_domain_name);
 }
 
 // Set the path to the root CA certificate.
@@ -79,7 +92,7 @@ AIS_Sender* AIS_NewSender(const AIS_ConnectionOptions* options,
                           const char* stream_name, AIS_Status* ais_status) {
   SenderOptions sender_options;
   sender_options.connection_options = options->connection_options;
-  sender_options.stream_name = stream_name;
+  sender_options.stream_name = ToString(stream_name);
 
   std::unique_ptr<PacketSender> sender;
   auto status = MakePacketSender(sender_options, &sender);
@@ -105,20 +118,23 @@ void AIS_SendPacket(AIS_Sender* ais_sender, AIS_Packet* ais_packet,
 // --------------------------------------------------------------------------
 
 AIS_Receiver* AIS_NewReceiver(const AIS_ConnectionOptions* options,
-                              const char* stream_name, AIS_Status* ais_status) {
-  PacketReceiver::Options packet_receiver_options;
-  packet_receiver_options.connection_options = options->connection_options;
-  packet_receiver_options.stream_name = stream_name;
-  auto packet_receiver_statusor =
-      PacketReceiver::Create(packet_receiver_options);
-  if (!packet_receiver_statusor.ok()) {
-    ais_status->status = packet_receiver_statusor.status();
+                              const char* stream_name,
+                              const char* receiver_name,
+                              AIS_Status* ais_status) {
+  ReceiverOptions receiver_options;
+  receiver_options.connection_options = options->connection_options;
+  receiver_options.stream_name = ToString(stream_name);
+  receiver_options.receiver_name = ToString(receiver_name);
+
+  auto receiver_queue = std::make_unique<ReceiverQueue<Packet>>();
+  auto status = MakePacketReceiverQueue(receiver_options, receiver_queue.get());
+  if (!status.ok()) {
+    ais_status->status = status;
     return nullptr;
   }
 
   auto ais_receiver = std::make_unique<AIS_Receiver>();
-  ais_receiver->packet_receiver =
-      std::move(packet_receiver_statusor).ValueOrDie();
+  ais_receiver->receiver_queue = std::move(receiver_queue);
   ais_status->status = OkStatus();
   return ais_receiver.release();
 }
@@ -126,9 +142,21 @@ AIS_Receiver* AIS_NewReceiver(const AIS_ConnectionOptions* options,
 void AIS_DeleteReceiver(AIS_Receiver* ais_receiver) { delete ais_receiver; }
 
 void AIS_ReceivePacket(AIS_Receiver* ais_receiver, AIS_Packet* ais_packet,
-                       AIS_Status* ais_status) {
-  ais_status->status =
-      ais_receiver->packet_receiver->Receive(&ais_packet->packet);
+                       int timeout_in_sec, AIS_Status* ais_status) {
+  absl::Duration timeout;
+  if (timeout_in_sec < 0) {
+    timeout = absl::InfiniteDuration();
+  } else {
+    timeout = absl::Seconds(timeout_in_sec);
+  }
+  if (!ais_receiver->receiver_queue->TryPop(ais_packet->packet, timeout)) {
+    ais_status->status = DeadlineExceededError(
+        absl::StrFormat("The server did not deliver a packet within the given "
+                        "timeout (%d seconds)",
+                        timeout_in_sec));
+  } else {
+    ais_status->status = OkStatus();
+  }
   return;
 }
 

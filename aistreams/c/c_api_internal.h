@@ -20,8 +20,8 @@
 #include <memory>
 
 #include "aistreams/base/connection_options.h"
-#include "aistreams/base/packet_receiver.h"
-#include "aistreams/base/packet_sender.h"
+#include "aistreams/base/wrappers/receivers.h"
+#include "aistreams/base/wrappers/senders.h"
 #include "aistreams/c/c_api.h"
 
 struct AIS_ConnectionOptions {
@@ -33,7 +33,8 @@ struct AIS_Sender {
 };
 
 struct AIS_Receiver {
-  std::unique_ptr<aistreams::PacketReceiver> packet_receiver = nullptr;
+  std::unique_ptr<aistreams::ReceiverQueue<aistreams::Packet>> receiver_queue =
+      nullptr;
 };
 
 #endif  // AISTREAMS_C_AIS_C_API_INTERNAL_H_

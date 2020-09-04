@@ -16,10 +16,12 @@ cc_library(
         ":ais_packet_as",
         ":ais_status",
         "//aistreams/base:connection_options",
-        "//aistreams/base:packet_receiver",
+        "//aistreams/base/wrappers:receivers",
         "//aistreams/base/wrappers:senders",
         "//aistreams/port:status",
         "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
     ],
 )
 

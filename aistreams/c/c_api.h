@@ -116,13 +116,18 @@ extern void AIS_SendPacket(AIS_Sender* ais_sender, AIS_Packet* ais_packet,
 // Represents a packet receiver.
 typedef struct AIS_Receiver AIS_Receiver;
 
-// Return a new packet receiver object.
+// Return a new packet receiver object. NULL otherwise.
+//
+// `stream_name`: specifies the name of the stream from which to receive from.
+// `receiver_name`: specifies a name you use to receive. A random name will be
+//                  generated for you if NULL.
 extern AIS_Receiver* AIS_NewReceiver(const AIS_ConnectionOptions* options,
                                      const char* stream_name,
+                                     const char* receiver_name,
                                      AIS_Status* ais_status);
 
 // Delete a packet receiver object.
-extern void AIS_DeleteReceiver(AIS_Receiver* ais_sender);
+extern void AIS_DeleteReceiver(AIS_Receiver* ais_receiver);
 
 // Receive a packet through the packet receiver.
 //
@@ -134,8 +139,13 @@ extern void AIS_DeleteReceiver(AIS_Receiver* ais_sender);
 // accessing its value is undefined behavior. You may re-use the same packet to
 // receive new values across multiple calls independent of whether the previous
 // calls succeeded or failed.
+//
+// `timeout_in_sec`: If non-negative, then this call will block up to the
+//                   the specified number of seconds to receive a packet
+//                   from the server. If negative, then wait with no timeout.
 extern void AIS_ReceivePacket(AIS_Receiver* ais_receiver,
-                              AIS_Packet* ais_packet, AIS_Status* ais_status);
+                              AIS_Packet* ais_packet, int timeout_in_sec,
+                              AIS_Status* ais_status);
 
 #ifdef __cplusplus
 }  // end extern "C"
