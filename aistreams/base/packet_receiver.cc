@@ -66,7 +66,6 @@ Status PacketReceiver::Initialize() {
     streaming_request_.set_consumer_name(options_.receiver_name);
   }
   if (!options_.enable_unary_rpc) {
-    LOG(INFO) << "Using streaming rpc to receive packets";
     auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
     if (!ctx_status_or.ok()) {
       LOG(ERROR) << ctx_status_or.status();

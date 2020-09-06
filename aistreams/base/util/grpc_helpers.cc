@@ -27,16 +27,25 @@ namespace aistreams {
 
 namespace {
 
+void SetCommonChannelArgs(grpc::ChannelArguments &channel_args) {
+  channel_args.SetMaxReceiveMessageSize(-1);
+  channel_args.SetMaxSendMessageSize(-1);
+  return;
+}
+
 std::shared_ptr<grpc::Channel> CreateInsecureGrpcChannel(
     const std::string &target_address) {
-  return grpc::CreateChannel(target_address,
-                             grpc::InsecureChannelCredentials());
+  grpc::ChannelArguments channel_args;
+  SetCommonChannelArgs(channel_args);
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      target_address, grpc::InsecureChannelCredentials(), channel_args);
+  return channel;
 }
 
 std::shared_ptr<grpc::Channel> CreateSecureGrpcChannel(
     const std::string &target_address, const std::string &ssl_domain_name,
     const std::string &ssl_root_cert_path) {
-  // Set SSL options.
+  // Get SSL certificates.
   grpc::SslCredentialsOptions ssl_options;
   auto status =
       file::GetContents(ssl_root_cert_path, &ssl_options.pem_root_certs);
@@ -44,12 +53,15 @@ std::shared_ptr<grpc::Channel> CreateSecureGrpcChannel(
     LOG(ERROR) << status;
     return nullptr;
   }
+
+  // Set channel args.
   std::shared_ptr<grpc::ChannelCredentials> channel_credentials =
       grpc::SslCredentials(ssl_options);
   grpc::ChannelArguments channel_args;
+  SetCommonChannelArgs(channel_args);
   channel_args.SetSslTargetNameOverride(ssl_domain_name);
 
-  // Create the secure channel.
+  // Create the channel.
   std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
       target_address, channel_credentials, channel_args);
   return channel;
