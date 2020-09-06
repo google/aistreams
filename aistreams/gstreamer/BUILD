@@ -104,6 +104,20 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ais_type_utils",
+    srcs = [
+        "ais_type_utils.cc",
+    ],
+    hdrs = ["ais_type_utils.h"],
+    deps = [
+        ":type_utils",
+        "//aistreams/c:c_api",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+    ],
+)
+
 cc_test(
     name = "type_utils_test",
     srcs = ["type_utils_test.cc"],

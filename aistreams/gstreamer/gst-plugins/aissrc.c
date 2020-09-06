@@ -38,6 +38,7 @@
 #include <string.h>
 
 #include "aissrc.h"
+#include "aistreams/gstreamer/ais_type_utils.h"
 
 GST_DEBUG_CATEGORY_STATIC(ais_src_debug_category);
 #define GST_CAT_DEFAULT ais_src_debug_category
@@ -397,7 +398,7 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
   AisSrc *src = AIS_SRC(psrc);
 
   AIS_Packet *ais_packet = NULL;
-  AIS_PacketAs *ais_packet_as = NULL;
+  AIS_GstreamerBuffer *ais_gstreamer_buffer = NULL;
   GstFlowReturn ret = GST_FLOW_OK;
 
   ais_packet = AIS_NewPacket(src->ais_status);
@@ -413,12 +414,10 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
     goto finalize;
   }
 
-  ais_packet_as = AIS_NewGstreamerBufferPacketAs(ais_packet, src->ais_status);
-  if (ais_packet_as == NULL) {
-    goto failed_new_packet_as;
+  ais_gstreamer_buffer = AIS_ToGstreamerBuffer(ais_packet, src->ais_status);
+  if (ais_gstreamer_buffer == NULL) {
+    goto failed_to_gstreamer_buffer;
   }
-  const AIS_GstreamerBuffer *ais_gstreamer_buffer =
-      (const AIS_GstreamerBuffer *)AIS_PacketAsValue(ais_packet_as);
 
   // Change the caps to those of the incoming packet if it is different.
   const char *caps_string =
@@ -447,7 +446,7 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
   }
 
 finalize:
-  AIS_DeleteGstreamerBufferPacketAs(ais_packet_as);
+  AIS_DeleteGstreamerBuffer(ais_gstreamer_buffer);
   AIS_DeletePacket(ais_packet);
   return ret;
 
@@ -457,7 +456,7 @@ failed_receive_packet : {
   goto finalize;
 }
 
-failed_new_packet_as : {
+failed_to_gstreamer_buffer : {
   GST_ELEMENT_ERROR(src, LIBRARY, FAILED, ("%s", AIS_Message(src->ais_status)),
                     ("%s", AIS_Message(src->ais_status)));
   goto finalize;

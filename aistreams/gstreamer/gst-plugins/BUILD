@@ -22,6 +22,7 @@ cc_binary(
     visibility = ["//aistreams:__subpackages__"],
     deps = [
         "//aistreams/c:c_api",
+        "//aistreams/gstreamer:ais_type_utils",
         "@gstreamer",
     ],
 )
