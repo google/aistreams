@@ -42,3 +42,24 @@ cc_library(
         "@com_google_absl//absl/time",
     ],
 )
+
+cc_library(
+    name = "ingesters",
+    srcs = [
+        "ingesters.cc",
+    ],
+    hdrs = [
+        "ingesters.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/cc:aistreams_lite",
+        "//aistreams/gstreamer:gstreamer_utils",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+    ],
+)
