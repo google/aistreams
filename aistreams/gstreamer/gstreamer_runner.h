@@ -112,7 +112,6 @@ class GstreamerRunner {
  private:
   GstreamerRunnerOptions options_;
   ReceiverCallback receiver_callback_;
-  bool is_gst_init_ = false;
 
   class GstreamerRuntimeImpl;
   std::unique_ptr<GstreamerRuntimeImpl> gstreamer_runtime_impl_;

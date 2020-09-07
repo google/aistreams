@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
@@ -293,14 +294,15 @@ Status GstreamerRunner::Start() {
     return FailedPreconditionError("The runner has already Started");
   }
 
-  // Initialize gstreamer itself only once.
-  if (!is_gst_init_) {
-    gst_init(nullptr, nullptr);
-    is_gst_init_ = true;
+  // Initialize gstreamer if not already.
+  Status status = GstInit();
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+    return InternalError("Could not initialize GStreamer");
   }
 
   // Create a GstreamerRuntimeImpl.
-  Status status = ValidateRunnerOptions(options_);
+  status = ValidateRunnerOptions(options_);
   if (!status.ok()) {
     LOG(ERROR) << status;
     return InvalidArgumentError("The given GstreamerRunnerOptions has errors");

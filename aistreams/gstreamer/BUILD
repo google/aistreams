@@ -12,6 +12,7 @@ cc_library(
         "gstreamer_runner.h",
     ],
     deps = [
+        ":gstreamer_utils",
         "//aistreams/base/types:gstreamer_buffer",
         "//aistreams/port:logging",
         "//aistreams/port:status",
@@ -79,6 +80,24 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
+        "@gstreamer",
+    ],
+)
+
+cc_library(
+    name = "gstreamer_utils",
+    srcs = [
+        "gstreamer_utils.cc",
+    ],
+    hdrs = [
+        "gstreamer_utils.h",
+    ],
+    deps = [
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@gstreamer",
     ],
 )
