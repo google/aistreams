@@ -10,6 +10,7 @@ proto_library(
     srcs = ["management.proto"],
     deps = [
         "@com_google_protobuf//:any_proto",
+        "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
     ],
 )
