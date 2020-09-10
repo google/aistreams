@@ -56,7 +56,7 @@ message StreamManagerOnPremConfig {
   // Options to configure RPCs made over this connection.
   // The timeout for a call. Set a positive value to timeout. By default its
   // value is -1, and won't be used for RPC calls
-  google.protobuf.Duration duration = 5;
+  google.protobuf.Duration timeout = 5;
   // If true, then block until the underlying communication channel
   // becomes ready instead of failing fast.
   bool wait_for_ready = 6;
