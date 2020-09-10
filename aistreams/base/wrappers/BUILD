@@ -4,6 +4,18 @@ package(
 )
 
 cc_library(
+    name = "managers",
+    srcs = ["managers.cc"],
+    hdrs = ["managers.h"],
+    deps = [
+        "//aistreams/base:management_client",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+    ],
+)
+
+cc_library(
     name = "receivers",
     srcs = [
         "receivers.cc",

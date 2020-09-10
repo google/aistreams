@@ -131,7 +131,9 @@ class OnPremStreamManagerImpl : public StreamManager {
 class ManagedStreamManagerImpl : public StreamManager {
  public:
   static StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager(
-      const StreamManagerManagedConfig& config);
+      const StreamManagerManagedConfig& config) {
+    return UnimplementedError("ManagedStreamManager is not implemeneted.");
+  }
 
   // CreateStream creates the stream. Return status to indicate whether the
   // creation succeeded or failed.
