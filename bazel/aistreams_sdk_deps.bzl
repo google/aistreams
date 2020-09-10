@@ -82,3 +82,20 @@ def aistreams_sdk_deps():
         build_file = "//third_party:gstreamer.BUILD",
         path = "/usr",
     )
+
+    maybe(
+      http_archive,
+      name = "pybind11",
+      build_file = "@pybind11_bazel//:pybind11.BUILD",
+      strip_prefix = "pybind11-2.2.3",
+      urls = ["https://github.com/pybind/pybind11/archive/v2.2.3.tar.gz"],
+      sha256 = "3a3b7b651afab1c5ba557f4c37d785a522b8030dfc765da26adc2ecd1de940ea",
+    )
+
+    maybe(
+      http_archive,
+      name = "pybind11_bazel",
+      strip_prefix = "pybind11_bazel-26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
+      urls = ["https://github.com/pybind/pybind11_bazel/archive/26973c0ff320cb4b39e45bc3e4297b82bc3a6c09.zip"],
+      sha256 = "a5666d950c3344a8b0d3892a88dc6b55c8e0c78764f9294e806d69213c03f19d",
+    )
