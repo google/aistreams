@@ -71,6 +71,11 @@ std::shared_ptr<grpc::Channel> CreateSecureGrpcChannel(
 
 std::shared_ptr<grpc::Channel> CreateGrpcChannel(
     const ConnectionOptions &options) {
+  if (options.authenticate_with_google) {
+    return grpc::CreateChannel(options.target_address,
+                               grpc::GoogleDefaultCredentials());
+  }
+
   const SslOptions &ssl_options = options.ssl_options;
   if (ssl_options.use_insecure_channel) {
     return CreateInsecureGrpcChannel(options.target_address);

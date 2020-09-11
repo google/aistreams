@@ -64,6 +64,16 @@ def aistreams_sdk_deps():
         url = "https://github.com/google/protobuf/archive/09745575a923640154bcf307fba8aedff47f240a.tar.gz",  # 2019-08-19
     )
 
+    maybe(
+        http_archive,
+        name = "com_github_googleapis_googleapis",
+        sha256 = "af7c98662540895ec76c9104768bc33f2bf6171efb7fa4b9cbe430b14530c558",
+        strip_prefix = "googleapis-6a18a3c50ffd62de53dd2e44f599d6696580f90b",
+        # 2020-09-10
+        # TODO: update the version once aistreams is published.
+        url = "https://github.com/googleapis/googleapis/archive/6a18a3c50ffd62de53dd2e44f599d6696580f90b.tar.gz",
+    )
+
     # This requires gstreamer to be installed on your system.
     # TODO: Ok to start, but consider building from source with bazel.
     maybe(

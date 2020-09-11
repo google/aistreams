@@ -77,3 +77,14 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
     ],
 )
+
+cc_library(
+    name = "auth_helpers",
+    srcs = ["auth_helpers.cc"],
+    hdrs = ["auth_helpers.h"],
+    deps = [
+        ":grpc_helpers",
+        "@com_github_googleapis_googleapis//google/iam/credentials/v1:credentials_cc_grpc",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)

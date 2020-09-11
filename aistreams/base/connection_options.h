@@ -56,6 +56,14 @@ struct ConnectionOptions {
   // This is the ip:port to an AI Streams service.
   std::string target_address;
 
+  // Options to authenticate with Google. The target address is in the format of
+  // 'xxx.googleapis.com' if authenticate_with_google is set to true.
+  // ```
+  // auto creds = grpc::GoogleDefaultCredentials();
+  // auto channel = grpc::CreateChannel("xxx.googleapis.com", creds);
+  // ```
+  bool authenticate_with_google = false;
+
   // Options to configure TLS/SSL over the communication channel.
   SslOptions ssl_options;
 

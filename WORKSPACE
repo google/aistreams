@@ -4,6 +4,14 @@ load("//bazel:aistreams_sdk_deps.bzl", "aistreams_sdk_deps")
 
 aistreams_sdk_deps()
 
+load("@com_github_googleapis_googleapis//:repository_rules.bzl", "switched_rules_by_language")
+
+switched_rules_by_language(
+    name = "com_google_googleapis_imports",
+    cc = True,
+    grpc = True,
+)
+
 # Requirements for @com_github_grpc_grpc.
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
