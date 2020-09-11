@@ -21,12 +21,19 @@
 
 namespace aistreams {
 
-// GetJwtToken will send request to IAM service to generate a JWT token. You
+// GetIdToken will send request to IAM service to generate a ID token. You
 // need to set the GOOGLE_APPLICATION_CREDENTIALS to the file path of the JSON
 // file that contains your service account key. The service account needs to
 // have the Service Account Token Creator role
 // (roles/iam.serviceAccountTokenCreator).
-StatusOr<std::string> GetJwtToken(const std::string& service_account);
+StatusOr<std::string> GetIdToken(const std::string& service_account);
+
+// GetIdTokenWithDefaultServiceAccount will use the service account from the
+// JSON key file.You need to set the GOOGLE_APPLICATION_CREDENTIALS to the file
+// path of the JSON file that contains your service account key. The service
+// account needs to have the Service Account Token Creator role
+// (roles/iam.serviceAccountTokenCreator).
+StatusOr<std::string> GetIdTokenWithDefaultServiceAccount();
 
 }  // namespace aistreams
 

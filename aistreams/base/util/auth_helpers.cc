@@ -17,8 +17,10 @@
 #include "aistreams/base/util/auth_helpers.h"
 
 #include "absl/strings/str_format.h"
+#include "absl/strings/strip.h"
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
+#include "aistreams/util/file_helpers.h"
 #include "google/iam/credentials/v1/common.grpc.pb.h"
 #include "google/iam/credentials/v1/common.pb.h"
 #include "google/iam/credentials/v1/iamcredentials.grpc.pb.h"
@@ -31,11 +33,14 @@ using ::google::iam::credentials::v1::GenerateIdTokenResponse;
 using ::google::iam::credentials::v1::IAMCredentials;
 
 constexpr char kIAMGoogleAPI[] = "iamcredentials.googleapis.com";
-constexpr char kAudiance[] = "https://cloud.google.com/";
+constexpr char kAudiance[] = "https://aistreams.googleapis.com/";
 constexpr char kResourceNameFormat[] = "projects/-/serviceAccounts/%s";
+constexpr char kGoogleApplicationCredentials[] =
+    "GOOGLE_APPLICATION_CREDENTIALS";
+
 }  // namespace
 
-StatusOr<std::string> GetJwtToken(const std::string& service_account) {
+StatusOr<std::string> GetIdToken(const std::string& service_account) {
   ConnectionOptions options;
   options.target_address = kIAMGoogleAPI;
   options.authenticate_with_google = true;
@@ -58,6 +63,53 @@ StatusOr<std::string> GetJwtToken(const std::string& service_account) {
         "Encountered error while calling IAM service to generate ID token.");
   }
   return response.token();
+}
+
+StatusOr<std::string> GetIdTokenWithDefaultServiceAccount() {
+  const char* cred_path = std::getenv(kGoogleApplicationCredentials);
+  if (cred_path == nullptr) {
+    return InternalError(
+        "GOOGLE_APPLICATION_CREDENTIALS is not set. Please follow "
+        "https://cloud.google.com/docs/authentication/getting-started to setup "
+        "authentication.");
+  }
+
+  // Read json key file.
+  std::string file_contents;
+  auto status = file::GetContents(cred_path, &file_contents);
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+    return InvalidArgumentError(
+        absl::StrFormat("Failed to get contents from file %s", cred_path));
+  }
+
+  // Partially parse the json key file.
+  absl::string_view content(file_contents);
+  auto start_pos = content.find("client_email");
+  if (start_pos == absl::string_view::npos) {
+    return InternalError("Failed to find client_email from the file.");
+  }
+  start_pos = content.find_first_of(':', start_pos);
+  if (start_pos == absl::string_view::npos) {
+    return InternalError(
+        absl::StrFormat("Failed to find colon(:) after position %d, the format "
+                        "of json file is invalid.",
+                        start_pos));
+  }
+
+  auto end_pos = content.find_first_of(',', start_pos);
+  if (end_pos == absl::string_view::npos) {
+    return InternalError(
+        absl::StrFormat("Failed to find comma(,) after position %d, the format "
+                        "of json is invalid.",
+                        start_pos));
+  }
+  absl::string_view client_email =
+      content.substr(start_pos + 1, end_pos - start_pos - 1);
+  client_email = absl::StripAsciiWhitespace(client_email);
+  client_email = absl::StripPrefix(client_email, "\"");
+  client_email = absl::StripSuffix(client_email, "\"");
+  return GetIdToken(std::string{client_email});
 }
 
 }  // namespace aistreams
