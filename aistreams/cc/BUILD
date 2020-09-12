@@ -4,6 +4,19 @@ package(
 )
 
 cc_library(
+    name = "aistreams",
+    hdrs = [
+        "aistreams.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":aistreams_lite",
+        ":decoded_receivers",
+        ":ingesters",
+    ],
+)
+
+cc_library(
     name = "aistreams_lite",
     hdrs = [
         "aistreams_lite.h",
