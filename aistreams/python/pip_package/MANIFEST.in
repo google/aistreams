@@ -1,0 +1,2 @@
+include aistreams/python/apps/ingester_app
+include aistreams/gstreamer/gst-plugins/*.so
