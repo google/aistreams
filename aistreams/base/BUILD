@@ -105,6 +105,7 @@ cc_library(
     srcs = ["management_client.cc"],
     hdrs = ["management_client.h"],
     deps = [
+        "//aistreams/base/util:auth_helpers",
         "//aistreams/base/util:grpc_helpers",
         "//aistreams/port:grpc++",
         "//aistreams/port:logging",

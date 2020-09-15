@@ -14,6 +14,8 @@
 
 #include "aistreams/base/management_client.h"
 
+#include "absl/strings/str_format.h"
+#include "aistreams/base/util/auth_helpers.h"
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
@@ -22,6 +24,10 @@
 #include "aistreams/proto/management.pb.h"
 
 namespace aistreams {
+namespace {
+constexpr char kAuthorization[] = "authorization";
+constexpr char kTokenFormat[] = "Bearer %s";
+}  // namespace
 
 // Stream manager for managing streams in on-prem cluster.
 class OnPremStreamManagerImpl : public StreamManager {
@@ -39,6 +45,12 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
+    auto status = UpdateContext(context);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return InternalError("Failed to update context.");
+    }
+
     CreateStreamRequest request;
     CreateStreamResponse response;
     request.set_stream_name(stream.name());
@@ -46,7 +58,6 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::Status grpc_status =
         stub_->CreateStream(&context, request, &response);
     if (!grpc_status.ok()) {
-      LOG(ERROR) << grpc_status.error_message();
       return UnknownError("Encountered error calling RPC CreateStream");
     }
     return OkStatus();
@@ -57,6 +68,12 @@ class OnPremStreamManagerImpl : public StreamManager {
   virtual Status DeleteStream(const std::string& stream_name) override {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
+
+    auto status = UpdateContext(context);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return InternalError("Failed to update context.");
+    }
 
     DeleteStreamRequest request;
     google::protobuf::Empty response;
@@ -77,9 +94,14 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
+    auto status = UpdateContext(context);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return InternalError("Failed to update context.");
+    }
+
     ListStreamRequest request;
     ListStreamResponse response;
-
     grpc::Status grpc_status = stub_->ListStream(&context, request, &response);
     if (!grpc_status.ok()) {
       LOG(ERROR) << grpc_status.error_message();
@@ -96,6 +118,18 @@ class OnPremStreamManagerImpl : public StreamManager {
   }
 
  private:
+  Status UpdateContext(grpc::ClientContext& context) {
+    auto token_statusor = GetIdTokenWithDefaultServiceAccount();
+    if (!token_statusor.ok()) {
+      LOG(ERROR) << token_statusor.status();
+      return InternalError("Failed to get token.");
+    }
+    context.AddMetadata(
+        kAuthorization,
+        absl::StrFormat(kTokenFormat, std::move(token_statusor).ValueOrDie()));
+    return OkStatus();
+  }
+
   Status Initialize() {
     auto grpc_channel = CreateGrpcChannel(options_);
     if (grpc_channel == nullptr) {
