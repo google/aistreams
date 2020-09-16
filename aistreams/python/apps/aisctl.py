@@ -22,11 +22,12 @@ import sys
 
 import aistreams.gstreamer as gst
 
+_MANAGEMENT_APP_NAME = "manager_app"
 _INGESTION_APP_NAME = "ingester_app"
 _LOGGING_FORMAT = "%(levelname)s: %(message)s"
 
 
-def set_environment_variables():
+def _set_environment_variables():
   gst_plugin_path = os.path.join(
       pathlib.Path(gst.__file__).parents[0], "gst-plugins")
   logging.debug("Setting GST_PLUGIN_PATH to \"%s\"", gst_plugin_path)
@@ -34,41 +35,81 @@ def set_environment_variables():
   os.environ["GLOG_alsologtostderr"] = "1"
 
 
+def _to_cpp_bool_string(b):
+  return "true" if b else "false"
+
+
+def _exec_manager_app(op_id, args):
+  """Executes the manager app with the given op id and commandline args."""
+  app_path = os.path.join(
+      pathlib.Path(__file__).parents[0], _MANAGEMENT_APP_NAME)
+  manager_app_config = {
+      "app_path":
+          app_path,
+      "op_id":
+          op_id,
+      "ssl_root_cert_path":
+          args.ssl_root_cert_path,
+      "stream_name":
+          args.stream_name,
+      "target_address":
+          args.target_address,
+      "use_google_managed_service":
+          _to_cpp_bool_string(args.use_google_managed_service),
+      "use_insecure_channel":
+          _to_cpp_bool_string(args.use_insecure_channel),
+  }
+  manager_app_cmd = (
+      "{app_path} "
+      "--op_id={op_id} "
+      "--ssl_root_cert_path={ssl_root_cert_path} "
+      "--stream_name={stream_name} "
+      "--target_address={target_address} "
+      "--use_google_managed_service={use_google_managed_service} "
+      "--use_insecure_channel={use_insecure_channel} ".format(
+          **manager_app_config))
+  logging.debug("Executing command %s.", manager_app_cmd)
+
+  manager_app_tokens = shlex.split(manager_app_cmd)
+  os.execlp(manager_app_tokens[0], *manager_app_tokens)
+
+
 def create_stream(args):
   """Create a stream on the server."""
-  raise NotImplementedError("TODO")
+  return _exec_manager_app(0, args)
 
 
 def list_streams(args):
   """List all the streams on the server."""
-  raise NotImplementedError("TODO")
+  return _exec_manager_app(1, args)
 
 
 def delete_stream(args):
   """Delete a stream on the server."""
-  raise NotImplementedError("TODO")
+  return _exec_manager_app(2, args)
 
 
 def ingest(args):
   """Ingest an input source uri."""
   app_path = os.path.join(
       pathlib.Path(__file__).parents[0], _INGESTION_APP_NAME)
-  ingest_app_config = {
+  ingester_app_config = {
       "app_path": app_path,
       "target_address": args.target_address,
       "stream_name": args.stream_name,
       "loop_playback": args.loop_playback,
       "source_uri": args.source_uri,
   }
-  ingest_app_cmd = ("{app_path} "
-                    "--target_address={target_address} "
-                    "--stream_name={stream_name} "
-                    "--loop_playback={loop_playback} "
-                    "--source_uri={source_uri} ".format(**ingest_app_config))
-  logging.debug("Executing command %s.", ingest_app_cmd)
+  ingester_app_cmd = ("{app_path} "
+                      "--target_address={target_address} "
+                      "--stream_name={stream_name} "
+                      "--loop_playback={loop_playback} "
+                      "--source_uri={source_uri} ".format(
+                          **ingester_app_config))
+  logging.debug("Executing command %s.", ingester_app_cmd)
 
-  ingest_app_tokens = shlex.split(ingest_app_cmd)
-  os.execlp(ingest_app_tokens[0], *ingest_app_tokens)
+  ingester_app_tokens = shlex.split(ingester_app_cmd)
+  os.execlp(ingester_app_tokens[0], *ingester_app_tokens)
 
 
 def main():
@@ -85,6 +126,11 @@ def main():
       type=str,
       required=True,
       help="Address (ip:port) to the service endpoint.")
+
+  parser.add_argument(
+      "--use-google-managed-service",
+      action="store_true",
+      help="Use the Google managed service.")
 
   parser.add_argument(
       "--use-insecure-channel",
@@ -160,7 +206,7 @@ def main():
     logging.basicConfig(format=_LOGGING_FORMAT, level=logging.INFO)
 
   # Set environment variables for this and subprocesses.
-  set_environment_variables()
+  _set_environment_variables()
 
   parsed_args.func(parsed_args)
 

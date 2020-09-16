@@ -10,6 +10,7 @@ py_binary(
     ],
     data = [
         ":ingester_app",
+        ":manager_app",
         "//aistreams/gstreamer/gst-plugins:libaissink.so",
     ],
 )

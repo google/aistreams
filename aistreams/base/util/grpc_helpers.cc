@@ -50,7 +50,7 @@ std::shared_ptr<grpc::Channel> CreateSecureGrpcChannel(
   auto status =
       file::GetContents(ssl_root_cert_path, &ssl_options.pem_root_certs);
   if (!status.ok()) {
-    LOG(ERROR) << status;
+    LOG(ERROR) << "Failed to GetContents of the SSL cert file: " << status;
     return nullptr;
   }
 

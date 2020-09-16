@@ -16,7 +16,33 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_format.h"
 #include "aistreams/cc/aistreams.h"
+
+namespace {
+
+// Management operations.
+enum class Operation {
+  kCreateStream = 0,
+  kListStreams,
+  kDeleteStream,
+  kNumOps,
+};
+
+constexpr const char* kOpNames[] = {"CreateStream", "ListStreams",
+                                    "DeleteStream"};
+
+std::string OpNameHelpString() {
+  std::string help_string;
+  int n = static_cast<int>(Operation::kNumOps);
+  for (int i = 0; i < n; ++i) {
+    help_string += absl::StrFormat("%d: %s, ", i, kOpNames[i]);
+  }
+  help_string.pop_back();
+  help_string.pop_back();
+  return help_string;
+}
+}  // namespace
 
 ABSL_FLAG(std::string, target_address, "",
           "Address (ip:port) to the AI Streams instance.");
@@ -24,20 +50,12 @@ ABSL_FLAG(std::string, stream_name, "", "Name of the stream to receiver from.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use insecure channel.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
-ABSL_FLAG(int, management_operation, -1,
-          "Management operation ID which will be converted to Operation enum.");
+ABSL_FLAG(int, op_id, -1,
+          absl::StrFormat("Management operation ID. %s.", OpNameHelpString()));
 ABSL_FLAG(bool, use_google_managed_service, true,
           "Use google managed service.");
 
 namespace aistreams {
-namespace {
-// Management operations.
-enum class Operation {
-  kCreateStream = 0,
-  kListStreams,
-  kDeleteStream,
-};
-}  // namespace
 
 StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
   StreamManagerConfig config;
@@ -49,7 +67,7 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
   // Check if the configuration is for onprem stream management service or
   // Google managed stream management service.
   if (!absl::GetFlag(FLAGS_use_google_managed_service)) {
-    LOG(INFO) << "Create StreamManager for on-prem stream management service.";
+    LOG(INFO) << "Creating an On-Prem StreamManager.";
     auto onprem_config = config.mutable_stream_manager_onprem_config();
     onprem_config->set_target_address(target_address);
     onprem_config->set_use_insecure_channel(
@@ -59,8 +77,8 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
     onprem_config->set_wait_for_ready(true);
     onprem_config->mutable_timeout()->set_seconds(google::protobuf::kint64max);
   } else {
-    LOG(INFO)
-        << "Create StreamManager for Google managed stream management service.";
+    LOG(INFO) << "Creating a StreamManager for the Google managed service.";
+    return UnimplementedError("TODO");
   }
   return StreamManagerFactory::CreateStreamManager(config);
 }
@@ -70,6 +88,7 @@ void CreateStream() {
   if (!manager_statusor.ok()) {
     LOG(ERROR) << "Failed to create StreamManager. "
                << manager_statusor.status();
+    return;
   }
 
   auto manager = std::move(manager_statusor).ValueOrDie();
@@ -80,7 +99,7 @@ void CreateStream() {
   if (!stream_statusor.ok()) {
     LOG(ERROR) << "Failed to call CreateStream(). " << stream_statusor.status();
   } else {
-    LOG(INFO) << "Succeeded to create stream " << stream_name;
+    LOG(INFO) << "Successfully created stream " << stream_name;
   }
 }
 
@@ -120,7 +139,7 @@ void DeleteStream() {
   if (!status.ok()) {
     LOG(ERROR) << "Failed to call DeleteStream(). " << status;
   } else {
-    LOG(INFO) << "Succeed to delete stream " << stream_name;
+    LOG(INFO) << "Successfully deleted the stream " << stream_name;
   }
 }
 }  // namespace aistreams
@@ -128,15 +147,15 @@ void DeleteStream() {
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   absl::ParseCommandLine(argc, argv);
-  aistreams::Operation op = static_cast<aistreams::Operation>(
-      absl::GetFlag(FLAGS_management_operation));
-  absl::flat_hash_map<aistreams::Operation, std::function<void()>> registry{
-      {aistreams::Operation::kCreateStream, aistreams::CreateStream},
-      {aistreams::Operation::kListStreams, aistreams::ListStreams},
-      {aistreams::Operation::kDeleteStream, aistreams::DeleteStream}};
+  ::Operation op = static_cast<::Operation>(absl::GetFlag(FLAGS_op_id));
+  absl::flat_hash_map<::Operation, std::function<void()>> registry{
+      {::Operation::kCreateStream, aistreams::CreateStream},
+      {::Operation::kListStreams, aistreams::ListStreams},
+      {::Operation::kDeleteStream, aistreams::DeleteStream}};
   auto it = registry.find(op);
   if (it == registry.end()) {
-    LOG(ERROR) << "Invalid management operation.";
+    LOG(ERROR) << absl::StrFormat("Invalid op id (%d). Choices are %s", op,
+                                  OpNameHelpString());
   } else {
     (it->second)();
   }
