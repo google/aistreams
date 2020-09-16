@@ -60,7 +60,7 @@ class OnPremStreamManagerImpl : public StreamManager {
     if (!grpc_status.ok()) {
       return UnknownError("Encountered error calling RPC CreateStream");
     }
-    return OkStatus();
+    return stream;
   }
 
   // DeleteStream deletes the stream. Return status to indicate whether the
