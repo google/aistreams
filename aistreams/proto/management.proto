@@ -63,7 +63,16 @@ message StreamManagerOnPremConfig {
 };
 
 // Configuration for stream manager to manage Google managed streams.
-message StreamManagerManagedConfig {};
+message StreamManagerManagedConfig {
+  // This is the API endpoint for AI Streams service.
+  string target_address = 1;
+  // The project hosting the management server.
+  string project = 2;
+  // The location of the management server.
+  string location = 3;
+  // The cluster hosting the management server.
+  string cluster = 4;
+};
 
 // Stream manager configuration.
 message StreamManagerConfig {

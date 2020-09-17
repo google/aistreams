@@ -67,11 +67,11 @@ def aistreams_sdk_deps():
     maybe(
         http_archive,
         name = "com_github_googleapis_googleapis",
-        sha256 = "af7c98662540895ec76c9104768bc33f2bf6171efb7fa4b9cbe430b14530c558",
-        strip_prefix = "googleapis-6a18a3c50ffd62de53dd2e44f599d6696580f90b",
+        sha256 = "2368a76f8f39582b45d119579f4c8674ddb119cd764f91b87383dac376087694",
+        strip_prefix = "googleapis-369e0cd05493fc5fdd7be96c6dc3b141e9dd0c16",
         # 2020-09-10
         # TODO: update the version once aistreams is published.
-        url = "https://github.com/googleapis/googleapis/archive/6a18a3c50ffd62de53dd2e44f599d6696580f90b.tar.gz",
+        url = "https://github.com/googleapis/googleapis/archive/369e0cd05493fc5fdd7be96c6dc3b141e9dd0c16.tar.gz",
     )
 
     # This requires gstreamer to be installed on your system.
@@ -84,18 +84,18 @@ def aistreams_sdk_deps():
     )
 
     maybe(
-      http_archive,
-      name = "pybind11",
-      build_file = "@pybind11_bazel//:pybind11.BUILD",
-      strip_prefix = "pybind11-2.2.3",
-      urls = ["https://github.com/pybind/pybind11/archive/v2.2.3.tar.gz"],
-      sha256 = "3a3b7b651afab1c5ba557f4c37d785a522b8030dfc765da26adc2ecd1de940ea",
+        http_archive,
+        name = "pybind11",
+        build_file = "@pybind11_bazel//:pybind11.BUILD",
+        strip_prefix = "pybind11-2.2.3",
+        urls = ["https://github.com/pybind/pybind11/archive/v2.2.3.tar.gz"],
+        sha256 = "3a3b7b651afab1c5ba557f4c37d785a522b8030dfc765da26adc2ecd1de940ea",
     )
 
     maybe(
-      http_archive,
-      name = "pybind11_bazel",
-      strip_prefix = "pybind11_bazel-26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
-      urls = ["https://github.com/pybind/pybind11_bazel/archive/26973c0ff320cb4b39e45bc3e4297b82bc3a6c09.zip"],
-      sha256 = "a5666d950c3344a8b0d3892a88dc6b55c8e0c78764f9294e806d69213c03f19d",
+        http_archive,
+        name = "pybind11_bazel",
+        strip_prefix = "pybind11_bazel-26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
+        urls = ["https://github.com/pybind/pybind11_bazel/archive/26973c0ff320cb4b39e45bc3e4297b82bc3a6c09.zip"],
+        sha256 = "a5666d950c3344a8b0d3892a88dc6b55c8e0c78764f9294e806d69213c03f19d",
     )

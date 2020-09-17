@@ -22,11 +22,19 @@
 #include "aistreams/port/status_macros.h"
 #include "aistreams/proto/management.grpc.pb.h"
 #include "aistreams/proto/management.pb.h"
+#include "google/longrunning/operations.grpc.pb.h"
+#include "google/longrunning/operations.pb.h"
+#include "google/partner/aistreams/v1alpha1/aistreams.grpc.pb.h"
+#include "google/partner/aistreams/v1alpha1/aistreams.pb.h"
 
 namespace aistreams {
 namespace {
 constexpr char kAuthorization[] = "authorization";
 constexpr char kTokenFormat[] = "Bearer %s";
+constexpr char kOperationAPI[] = "longrunning.googleapis.com";
+using ::google::longrunning::Operation;
+using ::google::longrunning::Operations;
+using ::google::partner::aistreams::v1alpha1::AIStreams;
 }  // namespace
 
 // Stream manager for managing streams in on-prem cluster.
@@ -166,23 +174,137 @@ class ManagedStreamManagerImpl : public StreamManager {
  public:
   static StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager(
       const StreamManagerManagedConfig& config) {
-    return UnimplementedError("ManagedStreamManager is not implemeneted.");
+    auto manager_ptr = new ManagedStreamManagerImpl(config);
+    AIS_RETURN_IF_ERROR(manager_ptr->Initialize());
+    return std::unique_ptr<StreamManager>(manager_ptr);
   }
 
   // CreateStream creates the stream. Return status to indicate whether the
   // creation succeeded or failed.
-  virtual StatusOr<Stream> CreateStream(const Stream& stream) override;
+  virtual StatusOr<Stream> CreateStream(const Stream& stream) override {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::CreateStreamRequest request;
+    ::google::longrunning::Operation operation;
+    request.set_parent(parent_);
+    request.set_stream_id(stream.name());
+    grpc::Status grpc_status =
+        stub_->CreateStream(&context, request, &operation);
+    if (!grpc_status.ok()) {
+      return UnknownError("Encountered error calling RPC CreateStream");
+    }
+
+    auto operation_statusor = WaitOperation(operation);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Excountered error calling WaitOperation");
+    }
+    operation = std::move(operation_statusor).ValueOrDie();
+    ::google::partner::aistreams::v1alpha1::Stream s;
+    if (!operation.response().UnpackTo(&s)) {
+      return UnknownError(
+          "Encountered error while unpack response to stream message.");
+    }
+    Stream result;
+    result.set_name(s.name());
+    return result;
+  }
 
   // DeleteStream deletes the stream. Return status to indicate whether the
   // deletion succeeded or failed.
-  virtual Status DeleteStream(const std::string& stream_name) override;
+  virtual Status DeleteStream(const std::string& stream_name) override {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::DeleteStreamRequest request;
+    ::google::longrunning::Operation operation;
+    request.set_name(stream_name);
+    grpc::Status grpc_status =
+        stub_->DeleteStream(&context, request, &operation);
+    if (!grpc_status.ok()) {
+      return UnknownError("Encountered error calling RPC DeleteStream");
+    }
+
+    auto operation_statusor = WaitOperation(operation);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Excountered error calling WaitOperation");
+    }
+    return OkStatus();
+  }
 
   // ListStreams lists streams. Return the list of streams if the request
   // succeeds.
-  virtual StatusOr<std::vector<Stream>> ListStreams() override;
+  virtual StatusOr<std::vector<Stream>> ListStreams() override {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::ListStreamsRequest request;
+    ::google::partner::aistreams::v1alpha1::ListStreamsResponse response;
+    grpc::Status grpc_status = stub_->ListStreams(&context, request, &response);
+    if (!grpc_status.ok()) {
+      return UnknownError("Encountered error calling RPC CreateStream");
+    }
+
+    std::vector<Stream> streams;
+    streams.reserve(response.streams_size());
+    for (const auto& s : response.streams()) {
+      Stream stream;
+      stream.set_name(s.name());
+      streams.push_back(stream);
+    }
+    return streams;
+  }
 
  private:
-  ManagedStreamManagerImpl(const StreamManagerManagedConfig& config);
+  Status Initialize() {
+    auto channel = CreateGrpcChannel(options_);
+    if (channel == nullptr) {
+      return UnknownError("Failed to create a gRPC channel");
+    }
+    stub_ = AIStreams::NewStub(channel);
+    if (stub_ == nullptr) {
+      return UnknownError("Failed to create a gRPC stub");
+    }
+    return OkStatus();
+  }
+
+  StatusOr<Operation> WaitOperation(const Operation& operation) {
+    ConnectionOptions options;
+    options.authenticate_with_google = true;
+    options.target_address = kOperationAPI;
+    auto channel = CreateGrpcChannel(options);
+    if (channel == nullptr) {
+      return UnknownError("Failed to create a gRPC channel");
+    }
+    std::unique_ptr<Operations::Stub> stub = Operations::NewStub(channel);
+    if (stub == nullptr) {
+      return UnknownError("Failed to create a gRPC stub");
+    }
+    ::google::longrunning::WaitOperationRequest request;
+    ::google::longrunning::Operation response;
+    request.set_name(operation.name());
+    grpc::ClientContext context;
+    auto grpc_status = stub->WaitOperation(&context, request, &response);
+    if (!grpc_status.ok()) {
+      return UnknownError("Encountered error calling RPC WaitOperation");
+    }
+    if (!response.done()) {
+      return UnknownError("Operation is not done");
+    }
+    if (response.has_error()) {
+      LOG(ERROR) << response.error().message();
+      return UnknownError("Operation failed.");
+    }
+    return response;
+  }
+
+  ManagedStreamManagerImpl(const StreamManagerManagedConfig& config)
+      : parent_(absl::StrFormat("projects/%s/locations/%s/clusters/%s",
+                                config.project(), config.location(),
+                                config.cluster())) {
+    options_.target_address = config.target_address();
+    options_.authenticate_with_google = true;
+  }
+
+  ConnectionOptions options_;
+  std::unique_ptr<AIStreams::Stub> stub_ = nullptr;
+  const std::string parent_;
 };
 
 StatusOr<std::unique_ptr<StreamManager>>

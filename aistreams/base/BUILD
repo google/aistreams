@@ -113,5 +113,7 @@ cc_library(
         "//aistreams/port:statusor",
         "//aistreams/proto:management_cc_grpc",
         "//aistreams/proto:management_cc_proto",
+        "@com_github_googleapis_googleapis//google/longrunning:longrunning_cc_grpc",
+        "@com_github_googleapis_googleapis//google/partner/aistreams/v1alpha1:aistreams_cc_grpc",
     ],
 )
