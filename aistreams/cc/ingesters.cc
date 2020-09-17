@@ -25,6 +25,7 @@
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
+#include "aistreams/util/file_helpers.h"
 
 namespace aistreams {
 
@@ -40,12 +41,16 @@ std::string SetPluginParam(absl::string_view parameter_name,
   return absl::StrFormat("%s=%s", parameter_name, value);
 }
 
+bool HasProtocolPrefix(const std::string& source_uri) {
+  std::regex re("^.*://");
+  return std::regex_search(source_uri, re);
+}
+
 // Decide the gstreamer plugin used to accept the input.
 //
 // The input source uri is assumed to be a file path if there is no uri prefix.
-std::string DecideInputPlugin(const std::string source_uri) {
-  std::regex re("^.*://");
-  if (std::regex_search(source_uri, re)) {
+std::string DecideInputPlugin(const std::string& source_uri) {
+  if (HasProtocolPrefix(source_uri)) {
     return absl::StrFormat("urisourcebin %s",
                            SetPluginParam("uri", source_uri));
   } else {
@@ -231,6 +236,21 @@ StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
 }  // namespace
 
 Status Ingest(const IngesterOptions& options, absl::string_view source_uri) {
+  // If the given source uri is not protocol prefixed, assume that it is a file
+  // name and explicitly check that it exists.
+  //
+  // We do this explicitly to make this very common mistake more transparent to
+  // the user. Gstreamer can technically detect this, but the message tends to
+  // be buried.
+  if (!HasProtocolPrefix(std::string(source_uri))) {
+    auto status = file::Exists(source_uri);
+    if (!status.ok()) {
+      return InvalidArgumentError(
+          absl::StrFormat("The file \"%s\" could not be accessed: %s",
+                          source_uri, status.message()));
+    }
+  }
+
   // Decide what the gst pipeline should be based on the options.
   auto gst_pipeline_statusor =
       DecideGstLaunchPipeline(options, std::string(source_uri));
