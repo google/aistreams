@@ -24,11 +24,15 @@
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
 
-// TODO: add SSL configurations.
 ABSL_FLAG(std::string, target_address, "localhost:50051",
           "Address (ip:port) to the AI Streams instance.");
-ABSL_FLAG(std::string, stream_name, "", "Name of the stream to receiver from.");
+ABSL_FLAG(std::string, stream_name, "", "Name of the stream to send to.");
 ABSL_FLAG(std::string, source_uri, "", "The uri of the input data source.");
+ABSL_FLAG(bool, use_insecure_channel, true, "Use an insecure channel.");
+ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
+          "The expected ssl domain name of the service.");
+ABSL_FLAG(std::string, ssl_root_cert_path, "",
+          "The path to the ssl root certificate.");
 ABSL_FLAG(bool, loop_playback, false,
           "Whether to loop/repeat the source when it reaches the end.");
 
@@ -39,6 +43,12 @@ void RunIngester() {
   IngesterOptions options;
   options.connection_options.target_address =
       absl::GetFlag(FLAGS_target_address);
+  options.connection_options.ssl_options.use_insecure_channel =
+      absl::GetFlag(FLAGS_use_insecure_channel);
+  options.connection_options.ssl_options.ssl_domain_name =
+      absl::GetFlag(FLAGS_ssl_domain_name);
+  options.connection_options.ssl_options.ssl_root_cert_path =
+      absl::GetFlag(FLAGS_ssl_root_cert_path);
   options.target_stream_name = absl::GetFlag(FLAGS_stream_name);
   std::string source_uri = absl::GetFlag(FLAGS_source_uri);
   bool loop_playback = absl::GetFlag(FLAGS_loop_playback);

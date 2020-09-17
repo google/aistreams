@@ -96,15 +96,22 @@ def ingest(args):
   ingester_app_config = {
       "app_path": app_path,
       "target_address": args.target_address,
+      "ssl_domain_name": args.ssl_domain_name,
+      "ssl_root_cert_path": args.ssl_root_cert_path,
       "stream_name": args.stream_name,
       "loop_playback": args.loop_playback,
       "source_uri": args.source_uri,
+      "use_insecure_channel": _to_cpp_bool_string(args.use_insecure_channel),
   }
+
   ingester_app_cmd = ("{app_path} "
                       "--target_address={target_address} "
+                      "--ssl_root_cert_path={ssl_root_cert_path} "
+                      "--ssl_domain_name={ssl_domain_name} "
                       "--stream_name={stream_name} "
                       "--loop_playback={loop_playback} "
-                      "--source_uri={source_uri} ".format(
+                      "--source_uri={source_uri} "
+                      "--use_insecure_channel={use_insecure_channel} ".format(
                           **ingester_app_config))
   logging.debug("Executing command %s.", ingester_app_cmd)
 
