@@ -24,6 +24,7 @@ import aistreams.gstreamer as gst
 
 _MANAGEMENT_APP_NAME = "manager_app"
 _INGESTION_APP_NAME = "ingester_app"
+_PLAYBACK_APP_NAME = "playback_app"
 _LOGGING_FORMAT = "%(levelname)s: %(message)s"
 
 
@@ -40,7 +41,7 @@ def _to_cpp_bool_string(b):
 
 
 def _normalize_string_for_commandline(s):
-  if s is None or s == "":
+  if not s:
     return "\"\""
   else:
     return s
@@ -48,17 +49,14 @@ def _normalize_string_for_commandline(s):
 
 def _exec_manager_app(op_id, args):
   """Executes the manager app with the given op id and commandline args."""
-  app_path = os.path.join(
-      pathlib.Path(__file__).parents[0], _MANAGEMENT_APP_NAME)
+
   manager_app_config = {
       "app_path":
-          app_path,
+          os.path.join(pathlib.Path(__file__).parents[0], _MANAGEMENT_APP_NAME),
       "op_id":
           op_id,
       "ssl_root_cert_path":
           _normalize_string_for_commandline(args.ssl_root_cert_path),
-      "stream_name":
-          _normalize_string_for_commandline(args.stream_name),
       "target_address":
           _normalize_string_for_commandline(args.target_address),
       "use_google_managed_service":
@@ -66,17 +64,21 @@ def _exec_manager_app(op_id, args):
       "use_insecure_channel":
           _to_cpp_bool_string(args.use_insecure_channel),
   }
-  manager_app_cmd = (
+  manager_app_tpl = (
       "{app_path} "
       "--op_id={op_id} "
       "--ssl_root_cert_path={ssl_root_cert_path} "
-      "--stream_name={stream_name} "
       "--target_address={target_address} "
       "--use_google_managed_service={use_google_managed_service} "
-      "--use_insecure_channel={use_insecure_channel} ".format(
-          **manager_app_config))
-  logging.debug("Executing command %s.", manager_app_cmd)
+      "--use_insecure_channel={use_insecure_channel} ")
 
+  if hasattr(args, "stream_name"):
+    manager_app_config["stream_name"] = _normalize_string_for_commandline(
+        args.stream_name)
+    manager_app_tpl += "--stream_name={stream_name} "
+
+  manager_app_cmd = manager_app_tpl.format(**manager_app_config)
+  logging.debug("Executing command %s.", manager_app_cmd)
   manager_app_tokens = shlex.split(manager_app_cmd)
   os.execlp(manager_app_tokens[0], *manager_app_tokens)
 
@@ -126,6 +128,37 @@ def ingest(args):
                       "--stream_name={stream_name} "
                       "--loop={loop} "
                       "--source_uri={source_uri} "
+                      "--use_insecure_channel={use_insecure_channel} ".format(
+                          **ingester_app_config))
+  logging.debug("Executing command %s.", ingester_app_cmd)
+
+  ingester_app_tokens = shlex.split(ingester_app_cmd)
+  os.execlp(ingester_app_tokens[0], *ingester_app_tokens)
+
+
+def playback(args):
+  """Playback a stream. The packet type must be convertible to a raw image."""
+  app_path = os.path.join(pathlib.Path(__file__).parents[0], _PLAYBACK_APP_NAME)
+  ingester_app_config = {
+      "app_path":
+          app_path,
+      "target_address":
+          _normalize_string_for_commandline(args.target_address),
+      "ssl_domain_name":
+          _normalize_string_for_commandline(args.ssl_domain_name),
+      "ssl_root_cert_path":
+          _normalize_string_for_commandline(args.ssl_root_cert_path),
+      "stream_name":
+          _normalize_string_for_commandline(args.stream_name),
+      "use_insecure_channel":
+          _to_cpp_bool_string(args.use_insecure_channel),
+  }
+
+  ingester_app_cmd = ("{app_path} "
+                      "--target_address={target_address} "
+                      "--ssl_root_cert_path={ssl_root_cert_path} "
+                      "--ssl_domain_name={ssl_domain_name} "
+                      "--stream_name={stream_name} "
                       "--use_insecure_channel={use_insecure_channel} ".format(
                           **ingester_app_config))
   logging.debug("Executing command %s.", ingester_app_cmd)
@@ -193,14 +226,13 @@ def main():
       help="The name of the stream to delete.")
   subparser_delete.set_defaults(func=delete_stream)
 
-  # Options for "list_streams" .
-  subparser_list_streams = subparsers.add_parser(
-      "list_streams", help="List all created streams.")
-  subparser_list_streams.set_defaults(func=list_streams)
+  # Options for "list" .
+  subparser_list = subparsers.add_parser("list", help="List all streams.")
+  subparser_list.set_defaults(func=list_streams)
 
   # Options for "ingest" .
   subparser_ingest = subparsers.add_parser(
-      "ingest", help="Send jpeg packets to a stream.")
+      "ingest", help="Ingest a video source to a stream.")
   subparser_ingest.add_argument(
       "-s",
       "--stream-name",
@@ -216,6 +248,20 @@ def main():
   subparser_ingest.add_argument(
       "-l", "--loop", action="store_true", help="Replay the source if it ends.")
   subparser_ingest.set_defaults(func=ingest)
+
+  # Options for "playback" .
+  subparser_playback = subparsers.add_parser(
+      "playback",
+      help="Playback a stream (Packets must be convertible to raw images.)")
+  subparser_playback.add_argument(
+      "-s",
+      "--stream-name",
+      type=str,
+      required=True,
+      help=("The stream to playback "
+            "(the packets must be covertible to raw images)."))
+  subparser_playback.set_defaults(func=playback)
+
   parsed_args = parser.parse_args()
 
   # Set verbosity.

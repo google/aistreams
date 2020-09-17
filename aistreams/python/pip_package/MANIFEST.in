@@ -1,3 +1,4 @@
 include aistreams/python/apps/ingester_app
 include aistreams/python/apps/manager_app
+include aistreams/python/apps/playback_app
 include aistreams/gstreamer/gst-plugins/*.so

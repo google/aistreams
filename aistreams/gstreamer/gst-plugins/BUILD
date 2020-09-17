@@ -34,9 +34,11 @@ cc_library(
     name = "cli_builders",
     srcs = [
         "aissink_cli_builder.cc",
+        "aissrc_cli_builder.cc",
     ],
     hdrs = [
         "aissink_cli_builder.h",
+        "aissrc_cli_builder.h",
     ],
     deps = [
         "//aistreams/base:connection_options",
