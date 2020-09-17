@@ -57,7 +57,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python3 -m pip --no-cache-dir install --upgrade \
          pip \
-         setuptools
+         setuptools \
+         wheel
 
 RUN ln -s $(which python3) /usr/local/bin/python
 
