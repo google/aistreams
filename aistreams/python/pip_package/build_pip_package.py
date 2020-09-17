@@ -37,6 +37,26 @@ def cd(dst):
     os.chdir(src)
 
 
+def _copytree(src_dir, dst_dir):
+  """Copy files from one directory to another.
+
+  This worksaround shutil.copytree's inability to cope with existing
+  destinations in python verions earlier than 3.8.
+
+  Args:
+    src_dir: The directory whose contents we want to copy from.
+    dst_dir: The destination directory we want to copy contents to. It must
+      already exist and be empty.
+  """
+  for f in os.listdir(src_dir):
+    src = os.path.join(src_dir, f)
+    dst = os.path.join(dst_dir, f)
+    if os.path.isdir(src):
+      shutil.copytree(src, dst)
+    else:
+      shutil.copy(src, dst)
+
+
 def find_pip_package_src_reldir():
   """Find the source directory that contains the setuptools boilerplate."""
   src_reldir = os.path.dirname(
@@ -63,8 +83,7 @@ def populate_staging_directory(staging_dir):
       setuptools.
   """
   runfiles_package_dir = find_runfiles_package_dir()
-  shutil.copytree(
-      os.path.join(runfiles_package_dir), staging_dir, dirs_exist_ok=True)
+  _copytree(os.path.join(runfiles_package_dir), staging_dir)
   shutil.rmtree(os.path.join(staging_dir, "external"))
 
   pip_package_src_reldir = find_pip_package_src_reldir()
