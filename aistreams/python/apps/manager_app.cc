@@ -55,6 +55,11 @@ ABSL_FLAG(int, op_id, -1,
 ABSL_FLAG(bool, use_google_managed_service, true,
           "Use google managed service.");
 
+ABSL_FLAG(std::string, project, "", "The project hosting management server.");
+ABSL_FLAG(std::string, location, "us-central1",
+          "The location of the management server.");
+ABSL_FLAG(std::string, cluster, "",
+          "The cluster hosting the management server.");
 namespace aistreams {
 
 StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
@@ -78,7 +83,11 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
     onprem_config->mutable_timeout()->set_seconds(google::protobuf::kint64max);
   } else {
     LOG(INFO) << "Creating a StreamManager for the Google managed service.";
-    return UnimplementedError("TODO");
+    auto managed_config = config.mutable_stream_manager_managed_config();
+    managed_config->set_target_address(target_address);
+    managed_config->set_project(absl::GetFlag(FLAGS_project));
+    managed_config->set_location(absl::GetFlag(FLAGS_location));
+    managed_config->set_cluster(absl::GetFlag(FLAGS_cluster));
   }
   return StreamManagerFactory::CreateStreamManager(config);
 }
