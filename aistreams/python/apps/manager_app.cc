@@ -119,9 +119,13 @@ void ListStreams() {
   }
 
   auto streams = std::move(streams_statusor).ValueOrDie();
-  LOG(INFO) << "Stream Name\n";
-  for (const auto& stream : streams) {
-    LOG(INFO) << stream.name() << "\n";
+  if (streams.empty()) {
+    LOG(INFO) << "No stream found.\n";
+  } else {
+    LOG(INFO) << absl::StrFormat("List (%d) streams: \n", streams.size());
+    for (const auto& stream : streams) {
+      LOG(INFO) << stream.name() << "\n";
+    }
   }
 }
 
