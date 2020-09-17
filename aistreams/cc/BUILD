@@ -68,6 +68,7 @@ cc_library(
     deps = [
         "//aistreams/cc:aistreams_lite",
         "//aistreams/gstreamer:gstreamer_utils",
+        "//aistreams/gstreamer/gst-plugins:cli_builders",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",

@@ -21,6 +21,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/time/time.h"
 #include "aistreams/cc/aistreams_lite.h"
+#include "aistreams/gstreamer/gst-plugins/aissink_cli_builder.h"
 #include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
@@ -31,7 +32,7 @@ namespace aistreams {
 
 namespace {
 
-std::string ToString(bool b) { return b ? "true" : "false"; }
+namespace {
 
 std::string SetPluginParam(absl::string_view parameter_name,
                            absl::string_view value) {
@@ -40,6 +41,8 @@ std::string SetPluginParam(absl::string_view parameter_name,
   }
   return absl::StrFormat("%s=%s", parameter_name, value);
 }
+
+}  // namespace
 
 bool HasProtocolPrefix(const std::string& source_uri) {
   std::regex re("^.*://");
@@ -119,72 +122,6 @@ std::string DecideCodecPlugins(const IngesterOptions& options) {
   }
 }
 
-// Builder class to assemble/configure the aissink plugin.
-//
-// The call to Finalize() will return the aissink's configuration string.
-class AisSinkBuilder {
- public:
-  AisSinkBuilder() = default;
-
-  AisSinkBuilder& SetTargetAddress(const std::string& target_address) {
-    target_address_ = target_address;
-    return *this;
-  }
-
-  AisSinkBuilder& SetStreamName(const std::string& stream_name) {
-    stream_name_ = stream_name;
-    return *this;
-  }
-
-  AisSinkBuilder& SetSslOptions(const SslOptions& options) {
-    use_insecure_channel_ = options.use_insecure_channel;
-    if (!use_insecure_channel_) {
-      ssl_domain_name_ = options.ssl_domain_name;
-      ssl_root_cert_path_ = options.ssl_root_cert_path;
-    }
-    return *this;
-  }
-
-  Status ValidateSettings() {
-    if (target_address_.empty()) {
-      return InvalidArgumentError("Given an empty target address");
-    }
-    if (stream_name_.empty()) {
-      return InvalidArgumentError("Given an empty stream name");
-    }
-    if (!use_insecure_channel_) {
-      if (ssl_domain_name_.empty()) {
-        return InvalidArgumentError("Given an empty ssl domain name");
-      }
-      if (ssl_root_cert_path_.empty()) {
-        return InvalidArgumentError("Given an empty path to the ssl root cert");
-      }
-    }
-    return OkStatus();
-  }
-
-  StatusOr<std::string> Finalize() {
-    AIS_RETURN_IF_ERROR(ValidateSettings());
-    std::vector<std::string> tokens;
-    tokens.push_back("aissink");
-    tokens.push_back(SetPluginParam("target-address", target_address_));
-    tokens.push_back(SetPluginParam("stream-name", stream_name_));
-    tokens.push_back(SetPluginParam("use-insecure-channel",
-                                    ToString(use_insecure_channel_)));
-    tokens.push_back(SetPluginParam("ssl-domain-name", ssl_domain_name_));
-    tokens.push_back(SetPluginParam("ssl-root-cert-path", ssl_root_cert_path_));
-    return absl::StrJoin(tokens, " ");
-  }
-
- private:
-  std::string target_address_;
-  std::string stream_name_;
-
-  bool use_insecure_channel_;
-  std::string ssl_domain_name_;
-  std::string ssl_root_cert_path_;
-};
-
 // Decide what the full gst pipeline should be given the options and source uri.
 StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
                                               const std::string& source_uri) {
@@ -216,9 +153,9 @@ StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
   }
 
   // Configure aissink.
-  AisSinkBuilder aissink_builder;
+  AissinkCliBuilder aissink_cli_builder;
   auto aissink_plugin_statusor =
-      aissink_builder
+      aissink_cli_builder
           .SetTargetAddress(options.connection_options.target_address)
           .SetStreamName(options.target_stream_name)
           .SetSslOptions(options.connection_options.ssl_options)

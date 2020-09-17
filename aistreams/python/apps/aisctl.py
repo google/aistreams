@@ -39,6 +39,13 @@ def _to_cpp_bool_string(b):
   return "true" if b else "false"
 
 
+def _normalize_string_for_commandline(s):
+  if s is None or s == "":
+    return "\"\""
+  else:
+    return s
+
+
 def _exec_manager_app(op_id, args):
   """Executes the manager app with the given op id and commandline args."""
   app_path = os.path.join(
@@ -49,11 +56,11 @@ def _exec_manager_app(op_id, args):
       "op_id":
           op_id,
       "ssl_root_cert_path":
-          args.ssl_root_cert_path,
+          _normalize_string_for_commandline(args.ssl_root_cert_path),
       "stream_name":
-          args.stream_name,
+          _normalize_string_for_commandline(args.stream_name),
       "target_address":
-          args.target_address,
+          _normalize_string_for_commandline(args.target_address),
       "use_google_managed_service":
           _to_cpp_bool_string(args.use_google_managed_service),
       "use_insecure_channel":
@@ -94,14 +101,22 @@ def ingest(args):
   app_path = os.path.join(
       pathlib.Path(__file__).parents[0], _INGESTION_APP_NAME)
   ingester_app_config = {
-      "app_path": app_path,
-      "target_address": args.target_address,
-      "ssl_domain_name": args.ssl_domain_name,
-      "ssl_root_cert_path": args.ssl_root_cert_path,
-      "stream_name": args.stream_name,
-      "loop_playback": args.loop_playback,
-      "source_uri": args.source_uri,
-      "use_insecure_channel": _to_cpp_bool_string(args.use_insecure_channel),
+      "app_path":
+          app_path,
+      "target_address":
+          _normalize_string_for_commandline(args.target_address),
+      "ssl_domain_name":
+          _normalize_string_for_commandline(args.ssl_domain_name),
+      "ssl_root_cert_path":
+          _normalize_string_for_commandline(args.ssl_root_cert_path),
+      "stream_name":
+          _normalize_string_for_commandline(args.stream_name),
+      "loop":
+          _to_cpp_bool_string(args.loop),
+      "source_uri":
+          _normalize_string_for_commandline(args.source_uri),
+      "use_insecure_channel":
+          _to_cpp_bool_string(args.use_insecure_channel),
   }
 
   ingester_app_cmd = ("{app_path} "
@@ -109,7 +124,7 @@ def ingest(args):
                       "--ssl_root_cert_path={ssl_root_cert_path} "
                       "--ssl_domain_name={ssl_domain_name} "
                       "--stream_name={stream_name} "
-                      "--loop_playback={loop_playback} "
+                      "--loop={loop} "
                       "--source_uri={source_uri} "
                       "--use_insecure_channel={use_insecure_channel} ".format(
                           **ingester_app_config))
@@ -199,10 +214,7 @@ def main():
       required=True,
       help="The input source's uri; e.g. something.mp4, rtsp://some.thing")
   subparser_ingest.add_argument(
-      "-l",
-      "--loop-playback",
-      action="store_true",
-      help="Replay the source if it ends.")
+      "-l", "--loop", action="store_true", help="Replay the source if it ends.")
   subparser_ingest.set_defaults(func=ingest)
   parsed_args = parser.parse_args()
 

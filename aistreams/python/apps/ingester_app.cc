@@ -33,7 +33,7 @@ ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
           "The expected ssl domain name of the service.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
-ABSL_FLAG(bool, loop_playback, false,
+ABSL_FLAG(bool, loop, false,
           "Whether to loop/repeat the source when it reaches the end.");
 
 namespace aistreams {
@@ -51,19 +51,19 @@ void RunIngester() {
       absl::GetFlag(FLAGS_ssl_root_cert_path);
   options.target_stream_name = absl::GetFlag(FLAGS_stream_name);
   std::string source_uri = absl::GetFlag(FLAGS_source_uri);
-  bool loop_playback = absl::GetFlag(FLAGS_loop_playback);
+  bool loop = absl::GetFlag(FLAGS_loop);
 
   // Run the ingester.
-  int playback_count = 1;
+  int loop_count = 1;
   do {
-    LOG(INFO) << "Starting to play the " << playback_count << "'th iteration";
+    LOG(INFO) << "Starting to play the " << loop_count << "'th iteration";
     auto status = Ingest(options, source_uri);
     if (!status.ok()) {
       LOG(ERROR) << status;
       break;
     }
-    ++playback_count;
-  } while (loop_playback);
+    ++loop_count;
+  } while (loop);
   return;
 }
 
