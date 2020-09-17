@@ -30,6 +30,16 @@ service ManagementServer {
   rpc ListStream(ListStreamRequest) returns (ListStreamResponse) {}
 }
 
+// Cluster message is the representation of the cluster resource.
+message Cluster {
+  // The name of the cluster.
+  string name = 1;
+  // The endpoint of the streaming service.
+  string service_endpoint = 2;
+  // The certificate for building secure connection to service.
+  string certificate = 3;
+}
+
 // Stream message is the representation of the stream resource.
 message Stream {
   // The name of the stream.
@@ -82,6 +92,16 @@ message StreamManagerConfig {
     // Configuration for building stream manager to manage managed streams.
     StreamManagerManagedConfig stream_manager_managed_config = 2;
   }
+};
+
+// Cluster manager configuration.
+message ClusterManagerConfig {
+  // This is the API endpoint for AI Streams service.
+  string target_address = 1;
+  // The project hosting the management server.
+  string project = 2;
+  // The location of the management server.
+  string location = 3;
 };
 
 // Request message for CreateStream.

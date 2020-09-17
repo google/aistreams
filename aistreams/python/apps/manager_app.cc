@@ -26,11 +26,15 @@ enum class Operation {
   kCreateStream = 0,
   kListStreams,
   kDeleteStream,
+  kCreateCluster,
+  kListClusters,
+  kDeleteCluster,
   kNumOps,
 };
 
 constexpr const char* kOpNames[] = {"CreateStream", "ListStreams",
-                                    "DeleteStream"};
+                                    "DeleteStream", "CreateCluster",
+                                    "ListClusters", "DeleteCluster"};
 
 std::string OpNameHelpString() {
   std::string help_string;
@@ -54,12 +58,12 @@ ABSL_FLAG(int, op_id, -1,
           absl::StrFormat("Management operation ID. %s.", OpNameHelpString()));
 ABSL_FLAG(bool, use_google_managed_service, true,
           "Use google managed service.");
-
 ABSL_FLAG(std::string, project, "", "The project hosting management server.");
 ABSL_FLAG(std::string, location, "us-central1",
           "The location of the management server.");
-ABSL_FLAG(std::string, cluster, "",
+ABSL_FLAG(std::string, cluster_name, "",
           "The cluster hosting the management server.");
+
 namespace aistreams {
 
 StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
@@ -72,7 +76,6 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
   // Check if the configuration is for onprem stream management service or
   // Google managed stream management service.
   if (!absl::GetFlag(FLAGS_use_google_managed_service)) {
-    LOG(INFO) << "Creating an On-Prem StreamManager.";
     auto onprem_config = config.mutable_stream_manager_onprem_config();
     onprem_config->set_target_address(target_address);
     onprem_config->set_use_insecure_channel(
@@ -82,12 +85,24 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
     onprem_config->set_wait_for_ready(true);
     onprem_config->mutable_timeout()->set_seconds(google::protobuf::kint64max);
   } else {
-    LOG(INFO) << "Creating a StreamManager for the Google managed service.";
     auto managed_config = config.mutable_stream_manager_managed_config();
+    const auto project_id = absl::GetFlag(FLAGS_project);
+    if (project_id.empty()) {
+      return InvalidArgumentError("Project id cannot be empty.");
+    }
+    const auto location = absl::GetFlag(FLAGS_location);
+    if (location.empty()) {
+      return InvalidArgumentError("Location cannot be empty.");
+    }
+    const auto cluster_name = absl::GetFlag(FLAGS_cluster_name);
+    if (cluster_name.empty()) {
+      return InvalidArgumentError("Cluster name cannot be empty.");
+    }
+
     managed_config->set_target_address(target_address);
-    managed_config->set_project(absl::GetFlag(FLAGS_project));
-    managed_config->set_location(absl::GetFlag(FLAGS_location));
-    managed_config->set_cluster(absl::GetFlag(FLAGS_cluster));
+    managed_config->set_project(project_id);
+    managed_config->set_location(location);
+    managed_config->set_cluster(cluster_name);
   }
   return StreamManagerFactory::CreateStreamManager(config);
 }
@@ -103,6 +118,11 @@ void CreateStream() {
   auto manager = std::move(manager_statusor).ValueOrDie();
   Stream stream;
   const auto stream_name = absl::GetFlag(FLAGS_stream_name);
+  if (stream_name.empty()) {
+    LOG(ERROR) << "Stream name cannot be empty.";
+    return;
+  }
+
   stream.set_name(stream_name);
   auto stream_statusor = manager->CreateStream(stream);
   if (!stream_statusor.ok()) {
@@ -148,6 +168,10 @@ void DeleteStream() {
 
   auto manager = std::move(manager_statusor).ValueOrDie();
   const auto stream_name = absl::GetFlag(FLAGS_stream_name);
+  if (stream_name.empty()) {
+    LOG(ERROR) << "Stream name cannot be empty.";
+    return;
+  }
   auto status = manager->DeleteStream(stream_name);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to call DeleteStream(). " << status;
@@ -155,6 +179,107 @@ void DeleteStream() {
     LOG(INFO) << "Successfully deleted the stream " << stream_name;
   }
 }
+
+StatusOr<std::unique_ptr<ClusterManager>> CreateClusterManager() {
+  if (!absl::GetFlag(FLAGS_use_google_managed_service)) {
+    return UnimplementedError(
+        "ClusterManager is not availabe for on-prem management server.");
+  }
+
+  ClusterManagerConfig config;
+  const auto target_address = absl::GetFlag(FLAGS_target_address);
+  if (target_address.empty()) {
+    return InvalidArgumentError("Target address cannot be empty.");
+  }
+  const auto project_id = absl::GetFlag(FLAGS_project);
+  if (project_id.empty()) {
+    return InvalidArgumentError("Project id cannot be empty.");
+  }
+  const auto location = absl::GetFlag(FLAGS_location);
+  if (location.empty()) {
+    return InvalidArgumentError("Location cannot be empty.");
+  }
+  config.set_target_address(target_address);
+  config.set_project(project_id);
+  config.set_location(location);
+  return ClusterManagerFactory::CreateClusterManager(config);
+}
+
+void CreateCluster() {
+  auto manager_statusor = CreateClusterManager();
+  if (!manager_statusor.ok()) {
+    LOG(ERROR) << "Failed to create ClusterManager. "
+               << manager_statusor.status();
+    return;
+  }
+
+  auto manager = std::move(manager_statusor).ValueOrDie();
+  Cluster cluster;
+  const auto cluster_name = absl::GetFlag(FLAGS_cluster_name);
+  if (cluster_name.empty()) {
+    LOG(ERROR) << "Cluster name cannot be empty.";
+    return;
+  }
+  cluster.set_name(cluster_name);
+  auto cluster_statusor = manager->CreateCluster(cluster);
+  if (!cluster_statusor.ok()) {
+    LOG(ERROR) << "Failed to call CreateCluster(). "
+               << cluster_statusor.status();
+  } else {
+    LOG(INFO) << "Successfully created cluster " << cluster_name;
+  }
+}
+
+void ListClusters() {
+  auto manager_statusor = CreateClusterManager();
+  if (!manager_statusor.ok()) {
+    LOG(ERROR) << "Failed to create ClusterManager. "
+               << manager_statusor.status();
+    return;
+  }
+
+  auto manager = std::move(manager_statusor).ValueOrDie();
+  auto clusters_statusor = manager->ListClusters();
+  if (!clusters_statusor.ok()) {
+    LOG(ERROR) << "Failed to call ListClusters(). "
+               << clusters_statusor.status();
+    return;
+  }
+
+  auto clusters = std::move(clusters_statusor).ValueOrDie();
+  if (clusters.empty()) {
+    LOG(INFO) << "No cluster found.\n";
+  } else {
+    LOG(INFO) << absl::StrFormat("List (%d) clusters: \n", clusters.size());
+    for (const auto& cluster : clusters) {
+      LOG(INFO) << cluster.name() << "\t" << cluster.service_endpoint() << "\n"
+                << cluster.certificate() << "\n";
+    }
+  }
+}
+
+void DeleteCluster() {
+  auto manager_statusor = CreateClusterManager();
+  if (!manager_statusor.ok()) {
+    LOG(ERROR) << "Failed to create ClusterManager. "
+               << manager_statusor.status();
+    return;
+  }
+
+  auto manager = std::move(manager_statusor).ValueOrDie();
+  const auto cluster_name = absl::GetFlag(FLAGS_cluster_name);
+  if (cluster_name.empty()) {
+    LOG(ERROR) << "Cluster name cannot be empty.";
+    return;
+  }
+  auto status = manager->DeleteCluster(cluster_name);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to call DeleteCluster(). " << status;
+  } else {
+    LOG(INFO) << "Successfully deleted the cluster " << cluster_name;
+  }
+}
+
 }  // namespace aistreams
 
 int main(int argc, char** argv) {
@@ -164,7 +289,10 @@ int main(int argc, char** argv) {
   absl::flat_hash_map<::Operation, std::function<void()>> registry{
       {::Operation::kCreateStream, aistreams::CreateStream},
       {::Operation::kListStreams, aistreams::ListStreams},
-      {::Operation::kDeleteStream, aistreams::DeleteStream}};
+      {::Operation::kDeleteStream, aistreams::DeleteStream},
+      {::Operation::kCreateCluster, aistreams::CreateCluster},
+      {::Operation::kListClusters, aistreams::ListClusters},
+      {::Operation::kDeleteCluster, aistreams::DeleteCluster}};
   auto it = registry.find(op);
   if (it == registry.end()) {
     LOG(ERROR) << absl::StrFormat("Invalid op id (%d). Choices are %s", op,

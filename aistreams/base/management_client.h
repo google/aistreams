@@ -27,6 +27,18 @@ namespace aistreams {
 class ClusterManager {
  public:
   virtual ~ClusterManager() = default;
+
+  // CreateCluster creates the cluster. Return status to indicate whether the
+  // creation succeeded or failed.
+  virtual StatusOr<Cluster> CreateCluster(const Cluster& cluster) = 0;
+
+  // DeleteCluster deletes the cluster. Returns status to indicate whether the
+  // deletion succeeded of failed.
+  virtual Status DeleteCluster(const std::string& cluster_name) = 0;
+
+  // ListClusters lists clusters. Returns the list of clusters if the request
+  // succeeds.
+  virtual StatusOr<std::vector<Cluster>> ListClusters() = 0;
 };
 
 // Stream manager for managing aistreams.
@@ -50,9 +62,17 @@ class StreamManager {
 // Factory for creating stream manager.
 class StreamManagerFactory {
  public:
-  // CreateStreamManager creates the stream manager given the
+  // CreateStreamManager creates the stream manager.
   static StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager(
       const StreamManagerConfig& config);
+};
+
+// Factory for creating cluster manager.
+class ClusterManagerFactory {
+ public:
+  // CreateClusterManager creates the cluster manager.
+  static StatusOr<std::unique_ptr<ClusterManager>> CreateClusterManager(
+      const ClusterManagerConfig& config);
 };
 
 }  // namespace aistreams

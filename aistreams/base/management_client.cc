@@ -15,6 +15,7 @@
 #include "aistreams/base/management_client.h"
 
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_split.h"
 #include "aistreams/base/util/auth_helpers.h"
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
@@ -32,9 +33,48 @@ namespace {
 constexpr char kAuthorization[] = "authorization";
 constexpr char kTokenFormat[] = "Bearer %s";
 constexpr char kOperationAPI[] = "longrunning.googleapis.com";
+constexpr char kGrpcMetadata[] = "x-goog-request-params";
 using ::google::longrunning::Operation;
 using ::google::longrunning::Operations;
 using ::google::partner::aistreams::v1alpha1::AIStreams;
+
+StatusOr<Operation> WaitOperation(const Operation& operation,
+                                  const std::string& parent) {
+  ConnectionOptions options;
+  options.authenticate_with_google = true;
+  options.target_address = kOperationAPI;
+  auto channel = CreateGrpcChannel(options);
+  if (channel == nullptr) {
+    return UnknownError("Failed to create a gRPC channel");
+  }
+  std::unique_ptr<Operations::Stub> stub = Operations::NewStub(channel);
+  if (stub == nullptr) {
+    return UnknownError("Failed to create a gRPC stub");
+  }
+  ::google::longrunning::WaitOperationRequest request;
+  ::google::longrunning::Operation response;
+  std::vector<std::string> names = absl::StrSplit(operation.name(), "/");
+  request.set_name(absl::StrFormat("operations/%s", names.back()));
+  LOG(INFO) << request.name();
+  LOG(INFO) << operation.name();
+  grpc::ClientContext context;
+  // Needs to add metadata. GFE needs the metadata for routing request.
+  context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent));
+
+  auto grpc_status = stub->WaitOperation(&context, request, &response);
+  if (!grpc_status.ok()) {
+    LOG(ERROR) << grpc_status.error_message();
+    return UnknownError("Encountered error calling RPC WaitOperation");
+  }
+  if (!response.done()) {
+    return UnknownError("Operation is not done");
+  }
+  if (response.has_error()) {
+    LOG(ERROR) << response.error().message();
+    return UnknownError("Operation failed.");
+  }
+  return response;
+}
 }  // namespace
 
 // Stream manager for managing streams in on-prem cluster.
@@ -187,26 +227,19 @@ class ManagedStreamManagerImpl : public StreamManager {
     ::google::longrunning::Operation operation;
     request.set_parent(parent_);
     request.set_stream_id(stream.name());
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
+
     grpc::Status grpc_status =
         stub_->CreateStream(&context, request, &operation);
     if (!grpc_status.ok()) {
+      LOG(INFO) << grpc_status.error_message();
       return UnknownError("Encountered error calling RPC CreateStream");
     }
 
-    auto operation_statusor = WaitOperation(operation);
-    if (!operation_statusor.ok()) {
-      LOG(ERROR) << operation_statusor.status();
-      return UnknownError("Excountered error calling WaitOperation");
-    }
-    operation = std::move(operation_statusor).ValueOrDie();
-    ::google::partner::aistreams::v1alpha1::Stream s;
-    if (!operation.response().UnpackTo(&s)) {
-      return UnknownError(
-          "Encountered error while unpack response to stream message.");
-    }
-    Stream result;
-    result.set_name(s.name());
-    return result;
+    LOG(INFO) << "Successfully sent request. Return long running operation: "
+              << operation.name();
+    return stream;
   }
 
   // DeleteStream deletes the stream. Return status to indicate whether the
@@ -216,17 +249,16 @@ class ManagedStreamManagerImpl : public StreamManager {
     ::google::partner::aistreams::v1alpha1::DeleteStreamRequest request;
     ::google::longrunning::Operation operation;
     request.set_name(stream_name);
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
     grpc::Status grpc_status =
         stub_->DeleteStream(&context, request, &operation);
     if (!grpc_status.ok()) {
       return UnknownError("Encountered error calling RPC DeleteStream");
     }
 
-    auto operation_statusor = WaitOperation(operation);
-    if (!operation_statusor.ok()) {
-      LOG(ERROR) << operation_statusor.status();
-      return UnknownError("Excountered error calling WaitOperation");
-    }
+    LOG(INFO) << "Successfully sent request. Return long running operation: "
+              << operation.name();
     return OkStatus();
   }
 
@@ -236,9 +268,14 @@ class ManagedStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::ListStreamsRequest request;
     ::google::partner::aistreams::v1alpha1::ListStreamsResponse response;
+    request.set_parent(parent_);
+
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
     grpc::Status grpc_status = stub_->ListStreams(&context, request, &response);
     if (!grpc_status.ok()) {
-      return UnknownError("Encountered error calling RPC CreateStream");
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC ListStreams");
     }
 
     std::vector<Stream> streams;
@@ -264,40 +301,118 @@ class ManagedStreamManagerImpl : public StreamManager {
     return OkStatus();
   }
 
-  StatusOr<Operation> WaitOperation(const Operation& operation) {
-    ConnectionOptions options;
-    options.authenticate_with_google = true;
-    options.target_address = kOperationAPI;
-    auto channel = CreateGrpcChannel(options);
-    if (channel == nullptr) {
-      return UnknownError("Failed to create a gRPC channel");
-    }
-    std::unique_ptr<Operations::Stub> stub = Operations::NewStub(channel);
-    if (stub == nullptr) {
-      return UnknownError("Failed to create a gRPC stub");
-    }
-    ::google::longrunning::WaitOperationRequest request;
-    ::google::longrunning::Operation response;
-    request.set_name(operation.name());
-    grpc::ClientContext context;
-    auto grpc_status = stub->WaitOperation(&context, request, &response);
-    if (!grpc_status.ok()) {
-      return UnknownError("Encountered error calling RPC WaitOperation");
-    }
-    if (!response.done()) {
-      return UnknownError("Operation is not done");
-    }
-    if (response.has_error()) {
-      LOG(ERROR) << response.error().message();
-      return UnknownError("Operation failed.");
-    }
-    return response;
-  }
-
   ManagedStreamManagerImpl(const StreamManagerManagedConfig& config)
       : parent_(absl::StrFormat("projects/%s/locations/%s/clusters/%s",
                                 config.project(), config.location(),
                                 config.cluster())) {
+    options_.target_address = config.target_address();
+    options_.authenticate_with_google = true;
+  }
+
+  ConnectionOptions options_;
+  std::unique_ptr<AIStreams::Stub> stub_ = nullptr;
+  const std::string parent_;
+};
+
+class ClusterManagerImpl : public ClusterManager {
+ public:
+  static StatusOr<std::unique_ptr<ClusterManager>> CreateClusterManager(
+      const ClusterManagerConfig& config) {
+    auto manager_ptr = new ClusterManagerImpl(config);
+    AIS_RETURN_IF_ERROR(manager_ptr->Initialize());
+    return std::unique_ptr<ClusterManager>(manager_ptr);
+  }
+
+  // CreateCluster creates the cluster. Return status to indicate whether the
+  // creation succeeded or failed.
+  virtual StatusOr<Cluster> CreateCluster(const Cluster& cluster) {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::CreateClusterRequest request;
+    ::google::longrunning::Operation operation;
+    request.set_parent(parent_);
+    request.set_cluster_id(cluster.name());
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
+
+    grpc::Status grpc_status =
+        stub_->CreateCluster(&context, request, &operation);
+    if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC CreateCluster");
+    }
+
+    LOG(INFO) << "Successfully sent request. Return long running operation: "
+              << operation.name();
+    return cluster;
+  }
+
+  // DeleteCluster deletes the cluster. Returns status to indicate whether the
+  // deletion succeeded of failed.
+  virtual Status DeleteCluster(const std::string& cluster_name) {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::DeleteClusterRequest request;
+    ::google::longrunning::Operation operation;
+    request.set_name(cluster_name);
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
+    grpc::Status grpc_status =
+        stub_->DeleteCluster(&context, request, &operation);
+    if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC DeleteCluster");
+    }
+
+    LOG(INFO) << "Successfully sent request. Return long running operation: "
+              << operation.name();
+
+    return OkStatus();
+  }
+
+  // ListClusters lists clusters. Returns the list of clusters if the request
+  // succeeds.
+  virtual StatusOr<std::vector<Cluster>> ListClusters() {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::ListClustersRequest request;
+    ::google::partner::aistreams::v1alpha1::ListClustersResponse response;
+    request.set_parent(parent_);
+
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
+    grpc::Status grpc_status =
+        stub_->ListClusters(&context, request, &response);
+    if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC ListClusters");
+    }
+
+    std::vector<Cluster> clusters;
+    clusters.reserve(response.clusters_size());
+    for (const auto& c : response.clusters()) {
+      Cluster cluster;
+      cluster.set_name(c.name());
+      cluster.set_service_endpoint(c.service_endpoint());
+      cluster.set_certificate(c.certificate());
+      clusters.push_back(cluster);
+    }
+    return clusters;
+  }
+
+ private:
+  Status Initialize() {
+    auto channel = CreateGrpcChannel(options_);
+    if (channel == nullptr) {
+      return UnknownError("Failed to create a gRPC channel");
+    }
+    stub_ = AIStreams::NewStub(channel);
+    if (stub_ == nullptr) {
+      return UnknownError("Failed to create a gRPC stub");
+    }
+    return OkStatus();
+  }
+
+  ClusterManagerImpl(const ClusterManagerConfig& config)
+      : parent_(absl::StrFormat("projects/%s/locations/%s", config.project(),
+                                config.location())) {
     options_.target_address = config.target_address();
     options_.authenticate_with_google = true;
   }
@@ -322,6 +437,12 @@ StreamManagerFactory::CreateStreamManager(const StreamManagerConfig& config) {
   return InvalidArgumentError(
       "Input config is invalid. Either stream_manager_onprem_config or "
       "stream_manager_managed_config should be specified.");
+}
+
+StatusOr<std::unique_ptr<ClusterManager>>
+ClusterManagerFactory::CreateClusterManager(
+    const ClusterManagerConfig& config) {
+  return ClusterManagerImpl::CreateClusterManager(config);
 }
 
 }  // namespace aistreams
