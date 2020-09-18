@@ -55,6 +55,8 @@ def _exec_manager_app(op_id, args):
           os.path.join(pathlib.Path(__file__).parents[0], _MANAGEMENT_APP_NAME),
       "op_id":
           op_id,
+      "ssl_domain_name":
+          _normalize_string_for_commandline(args.ssl_domain_name),
       "ssl_root_cert_path":
           _normalize_string_for_commandline(args.ssl_root_cert_path),
       "target_address":
@@ -67,6 +69,7 @@ def _exec_manager_app(op_id, args):
   manager_app_tpl = (
       "{app_path} "
       "--op_id={op_id} "
+      "--ssl_domain_name={ssl_domain_name} "
       "--ssl_root_cert_path={ssl_root_cert_path} "
       "--target_address={target_address} "
       "--use_google_managed_service={use_google_managed_service} "
