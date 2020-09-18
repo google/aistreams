@@ -38,6 +38,15 @@ using ::google::longrunning::Operation;
 using ::google::longrunning::Operations;
 using ::google::partner::aistreams::v1alpha1::AIStreams;
 
+void ReplaceServiceEndpointPort(std::string& endpoint) {
+  const std::string target_port = ":80";
+  auto pos = endpoint.find(target_port);
+  if (pos == std::string::npos) {
+    return;
+  }
+  endpoint.replace(pos, target_port.length(), ":443");
+}
+
 StatusOr<Operation> WaitOperation(const Operation& operation,
                                   const std::string& parent) {
   ConnectionOptions options;
@@ -390,7 +399,9 @@ class ClusterManagerImpl : public ClusterManager {
     for (const auto& c : response.clusters()) {
       Cluster cluster;
       cluster.set_name(c.name());
-      cluster.set_service_endpoint(c.service_endpoint());
+      auto service_endpoint = c.service_endpoint();
+      ReplaceServiceEndpointPort(service_endpoint);
+      cluster.set_service_endpoint(service_endpoint);
       cluster.set_certificate(c.certificate());
       clusters.push_back(cluster);
     }
