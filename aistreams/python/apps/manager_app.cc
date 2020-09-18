@@ -54,6 +54,8 @@ ABSL_FLAG(std::string, stream_name, "", "Name of the stream to receiver from.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use insecure channel.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
+ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
+          "The expected ssl domain name of the service.");
 ABSL_FLAG(int, op_id, -1,
           absl::StrFormat("Management operation ID. %s.", OpNameHelpString()));
 ABSL_FLAG(bool, use_google_managed_service, true,
@@ -82,6 +84,7 @@ StatusOr<std::unique_ptr<StreamManager>> CreateStreamManager() {
         absl::GetFlag(FLAGS_use_insecure_channel));
     onprem_config->set_ssl_root_cert_path(
         absl::GetFlag(FLAGS_ssl_root_cert_path));
+    onprem_config->set_ssl_domain_name(absl::GetFlag(FLAGS_ssl_domain_name));
     onprem_config->set_wait_for_ready(true);
     onprem_config->mutable_timeout()->set_seconds(google::protobuf::kint64max);
   } else {
