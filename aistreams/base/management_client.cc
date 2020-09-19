@@ -17,6 +17,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "aistreams/base/util/auth_helpers.h"
+#include "aistreams/base/util/exponential_backoff.h"
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
@@ -30,9 +31,9 @@
 
 namespace aistreams {
 namespace {
+constexpr int kMaxTrials = 15;
 constexpr char kAuthorization[] = "authorization";
 constexpr char kTokenFormat[] = "Bearer %s";
-constexpr char kOperationAPI[] = "longrunning.googleapis.com";
 constexpr char kGrpcMetadata[] = "x-goog-request-params";
 using ::google::longrunning::Operation;
 using ::google::longrunning::Operations;
@@ -47,11 +48,12 @@ void ReplaceServiceEndpointPort(std::string& endpoint) {
   endpoint.replace(pos, target_port.length(), ":443");
 }
 
-StatusOr<Operation> WaitOperation(const Operation& operation,
+StatusOr<Operation> WaitOperation(const std::string& operation_name,
+                                  const std::string& service_name,
                                   const std::string& parent) {
   ConnectionOptions options;
   options.authenticate_with_google = true;
-  options.target_address = kOperationAPI;
+  options.target_address = service_name;
   auto channel = CreateGrpcChannel(options);
   if (channel == nullptr) {
     return UnknownError("Failed to create a gRPC channel");
@@ -60,29 +62,41 @@ StatusOr<Operation> WaitOperation(const Operation& operation,
   if (stub == nullptr) {
     return UnknownError("Failed to create a gRPC stub");
   }
-  ::google::longrunning::WaitOperationRequest request;
-  ::google::longrunning::Operation response;
-  std::vector<std::string> names = absl::StrSplit(operation.name(), "/");
-  request.set_name(absl::StrFormat("operations/%s", names.back()));
-  LOG(INFO) << request.name();
-  LOG(INFO) << operation.name();
-  grpc::ClientContext context;
-  // Needs to add metadata. GFE needs the metadata for routing request.
-  context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent));
 
-  auto grpc_status = stub->WaitOperation(&context, request, &response);
-  if (!grpc_status.ok()) {
-    LOG(ERROR) << grpc_status.error_message();
-    return UnknownError("Encountered error calling RPC WaitOperation");
-  }
-  if (!response.done()) {
-    return UnknownError("Operation is not done");
-  }
-  if (response.has_error()) {
-    LOG(ERROR) << response.error().message();
-    return UnknownError("Operation failed.");
-  }
-  return response;
+  // Gives around 20 minutes for a 15 trial limit.
+  ExponentialBackoff exponential_backoff(absl::Seconds(2), absl::Minutes(2),
+                                         2.0f);
+  int num_trials = 0;
+  do {
+    LOG(INFO) << absl::StrFormat(
+        "Polling long running operation %s. Remaining retry count: %d.",
+        operation_name, kMaxTrials - num_trials);
+    ::google::longrunning::GetOperationRequest request;
+    ::google::longrunning::Operation response;
+    grpc::ClientContext context;
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent));
+    request.set_name(operation_name);
+
+    auto grpc_status = stub->GetOperation(&context, request, &response);
+    if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC WaitOperation");
+    }
+    if (response.has_error()) {
+      LOG(ERROR) << response.error().message();
+      return UnknownError("Operation failed.");
+    }
+    if (response.done()) {
+      return response;
+    }
+    if (++num_trials > kMaxTrials) {
+      LOG(ERROR) << "Too many retries";
+      break;
+    }
+    exponential_backoff.Wait();
+  } while (true);
+  return DeadlineExceededError("Failed waiting for operation.");
 }
 }  // namespace
 
@@ -246,9 +260,21 @@ class ManagedStreamManagerImpl : public StreamManager {
       return UnknownError("Encountered error calling RPC CreateStream");
     }
 
-    LOG(INFO) << "Successfully sent request. Return long running operation: "
-              << operation.name();
-    return stream;
+    auto operation_statusor =
+        WaitOperation(operation.name(), options_.target_address, parent_);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Encountered error deleting stream");
+    }
+    operation = std::move(operation_statusor).ValueOrDie();
+    ::google::partner::aistreams::v1alpha1::Stream s;
+    if (!operation.response().UnpackTo(&s)) {
+      return UnknownError(
+          "Encountered error while unpack response to stream message.");
+    }
+    Stream result;
+    result.set_name(s.name());
+    return result;
   }
 
   // DeleteStream deletes the stream. Return status to indicate whether the
@@ -266,8 +292,12 @@ class ManagedStreamManagerImpl : public StreamManager {
       return UnknownError("Encountered error calling RPC DeleteStream");
     }
 
-    LOG(INFO) << "Successfully sent request. Return long running operation: "
-              << operation.name();
+    auto operation_statusor =
+        WaitOperation(operation.name(), options_.target_address, parent_);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Encountered error deleting stream");
+    }
     return OkStatus();
   }
 
@@ -350,8 +380,26 @@ class ClusterManagerImpl : public ClusterManager {
       return UnknownError("Encountered error calling RPC CreateCluster");
     }
 
-    LOG(INFO) << "Successfully sent request. Return long running operation: "
-              << operation.name();
+    auto operation_statusor =
+        WaitOperation(operation.name(), options_.target_address, parent_);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Encountered error creating cluster");
+    }
+
+    operation = std::move(operation_statusor).ValueOrDie();
+    ::google::partner::aistreams::v1alpha1::Cluster c;
+    if (!operation.response().UnpackTo(&c)) {
+      return UnknownError(
+          "Encountered error while unpack response to cluster message.");
+    }
+
+    Cluster result;
+    result.set_name(c.name());
+    std::string service_endpoint = c.service_endpoint();
+    ReplaceServiceEndpointPort(service_endpoint);
+    result.set_service_endpoint(service_endpoint);
+    result.set_certificate(c.certificate());
     return cluster;
   }
 
@@ -371,8 +419,12 @@ class ClusterManagerImpl : public ClusterManager {
       return UnknownError("Encountered error calling RPC DeleteCluster");
     }
 
-    LOG(INFO) << "Successfully sent request. Return long running operation: "
-              << operation.name();
+    auto operation_statusor =
+        WaitOperation(operation.name(), options_.target_address, parent_);
+    if (!operation_statusor.ok()) {
+      LOG(ERROR) << operation_statusor.status();
+      return UnknownError("Encountered error deleting cluster");
+    }
 
     return OkStatus();
   }

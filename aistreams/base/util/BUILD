@@ -88,3 +88,12 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
     ],
 )
+
+cc_library(
+    name = "exponential_backoff",
+    srcs = ["exponential_backoff.cc"],
+    hdrs = ["exponential_backoff.h"],
+    deps = [
+        "@com_google_absl//absl/time",
+    ],
+)

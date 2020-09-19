@@ -106,6 +106,7 @@ cc_library(
     hdrs = ["management_client.h"],
     deps = [
         "//aistreams/base/util:auth_helpers",
+        "//aistreams/base/util:exponential_backoff",
         "//aistreams/base/util:grpc_helpers",
         "//aistreams/port:grpc++",
         "//aistreams/port:logging",
