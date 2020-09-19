@@ -25,6 +25,7 @@ ExponentialBackoff::ExponentialBackoff(absl::Duration initial_wait_time,
                                        absl::Duration max_wait_time,
                                        float wait_time_multiplier) {
   // Initial wait time should not be negative.
+  // TODO: set positive value for initial_wait_time_.
   initial_wait_time_ = std::max(initial_wait_time, ZeroDuration());
   current_wait_time_ = initial_wait_time_;
   // Maximum wait time should not be lower than the initial wait time.

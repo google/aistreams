@@ -29,12 +29,13 @@ enum class Operation {
   kCreateCluster,
   kListClusters,
   kDeleteCluster,
+  kGetCluster,
   kNumOps,
 };
 
-constexpr const char* kOpNames[] = {"CreateStream", "ListStreams",
-                                    "DeleteStream", "CreateCluster",
-                                    "ListClusters", "DeleteCluster"};
+constexpr const char* kOpNames[] = {
+    "CreateStream", "ListStreams",   "DeleteStream", "CreateCluster",
+    "ListClusters", "DeleteCluster", "GetCluster"};
 
 std::string OpNameHelpString() {
   std::string help_string;
@@ -283,6 +284,30 @@ void DeleteCluster() {
   }
 }
 
+void GetCluster() {
+  auto manager_statusor = CreateClusterManager();
+  if (!manager_statusor.ok()) {
+    LOG(ERROR) << "Failed to create ClusterManager. "
+               << manager_statusor.status();
+    return;
+  }
+
+  auto manager = std::move(manager_statusor).ValueOrDie();
+  const auto cluster_name = absl::GetFlag(FLAGS_cluster_name);
+  if (cluster_name.empty()) {
+    LOG(ERROR) << "Cluster name cannot be empty.";
+    return;
+  }
+  auto cluster_statusor = manager->GetCluster(cluster_name);
+  if (!cluster_statusor.ok()) {
+    LOG(ERROR) << "Failed to call GetCluster(). " << cluster_statusor.status();
+  } else {
+    auto cluster = std::move(cluster_statusor).ValueOrDie();
+    LOG(INFO) << cluster.name() << "\t" << cluster.service_endpoint() << "\n"
+              << cluster.certificate() << "\n";
+  }
+}
+
 }  // namespace aistreams
 
 int main(int argc, char** argv) {
@@ -295,7 +320,8 @@ int main(int argc, char** argv) {
       {::Operation::kDeleteStream, aistreams::DeleteStream},
       {::Operation::kCreateCluster, aistreams::CreateCluster},
       {::Operation::kListClusters, aistreams::ListClusters},
-      {::Operation::kDeleteCluster, aistreams::DeleteCluster}};
+      {::Operation::kDeleteCluster, aistreams::DeleteCluster},
+      {::Operation::kGetCluster, aistreams::GetCluster}};
   auto it = registry.find(op);
   if (it == registry.end()) {
     LOG(ERROR) << absl::StrFormat("Invalid op id (%d). Choices are %s", op,

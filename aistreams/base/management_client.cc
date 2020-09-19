@@ -364,7 +364,7 @@ class ClusterManagerImpl : public ClusterManager {
 
   // CreateCluster creates the cluster. Return status to indicate whether the
   // creation succeeded or failed.
-  virtual StatusOr<Cluster> CreateCluster(const Cluster& cluster) {
+  virtual StatusOr<Cluster> CreateCluster(const Cluster& cluster) override {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::CreateClusterRequest request;
     ::google::longrunning::Operation operation;
@@ -405,7 +405,7 @@ class ClusterManagerImpl : public ClusterManager {
 
   // DeleteCluster deletes the cluster. Returns status to indicate whether the
   // deletion succeeded of failed.
-  virtual Status DeleteCluster(const std::string& cluster_name) {
+  virtual Status DeleteCluster(const std::string& cluster_name) override {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::DeleteClusterRequest request;
     ::google::longrunning::Operation operation;
@@ -431,7 +431,7 @@ class ClusterManagerImpl : public ClusterManager {
 
   // ListClusters lists clusters. Returns the list of clusters if the request
   // succeeds.
-  virtual StatusOr<std::vector<Cluster>> ListClusters() {
+  virtual StatusOr<std::vector<Cluster>> ListClusters() override {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::ListClustersRequest request;
     ::google::partner::aistreams::v1alpha1::ListClustersResponse response;
@@ -458,6 +458,31 @@ class ClusterManagerImpl : public ClusterManager {
       clusters.push_back(cluster);
     }
     return clusters;
+  }
+
+  // GetCluster gets the cluster.
+  virtual StatusOr<Cluster> GetCluster(
+      const std::string& cluster_name) override {
+    grpc::ClientContext context;
+    ::google::partner::aistreams::v1alpha1::GetClusterRequest request;
+    ::google::partner::aistreams::v1alpha1::Cluster cluster;
+    request.set_name(cluster_name);
+
+    // Needs to add metadata. GFE needs the metadata for routing request.
+    context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
+    grpc::Status grpc_status = stub_->GetCluster(&context, request, &cluster);
+    if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
+      return UnknownError("Encountered error calling RPC GetCluster");
+    }
+
+    Cluster result;
+    result.set_name(cluster.name());
+    auto service_endpoint = cluster.service_endpoint();
+    ReplaceServiceEndpointPort(service_endpoint);
+    result.set_service_endpoint(service_endpoint);
+    result.set_certificate(cluster.certificate());
+    return result;
   }
 
  private:

@@ -39,6 +39,9 @@ class ClusterManager {
   // ListClusters lists clusters. Returns the list of clusters if the request
   // succeeds.
   virtual StatusOr<std::vector<Cluster>> ListClusters() = 0;
+
+  // GetCluster gets the cluster.
+  virtual StatusOr<Cluster> GetCluster(const std::string& cluster_name) = 0;
 };
 
 // Stream manager for managing aistreams.
