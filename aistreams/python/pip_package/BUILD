@@ -4,8 +4,8 @@ py_binary(
         "build_pip_package.py",
     ],
     data = [
-        "setup.py",
         "requirements.txt",
-        "//aistreams/python/apps:aisctl",
+        "setup.py",
+        "//aistreams/python/cli:aisctl",
     ],
 )

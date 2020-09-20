@@ -1,2 +1,3 @@
-wheel>=0.34
+click
 six==1.15.0
+wheel>=0.34

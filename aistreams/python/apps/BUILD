@@ -3,20 +3,6 @@ package(
     licenses = ["notice"],  # Apache 2.0
 )
 
-py_binary(
-    name = "aisctl",
-    srcs = [
-        "aisctl.py",
-    ],
-    data = [
-        ":ingester_app",
-        ":manager_app",
-        ":playback_app",
-        "//aistreams/gstreamer/gst-plugins:libaissink.so",
-        "//aistreams/gstreamer/gst-plugins:libaissrc.so",
-    ],
-)
-
 py_library(
     name = "apps",
     srcs = [

@@ -24,7 +24,7 @@ REQUIRED_PACKAGES = []
 with open("requirements.txt", "r") as f:
   REQUIRED_PACKAGES = f.read().splitlines()
 
-CONSOLE_SCRIPTS = ["aisctl = aistreams.python.apps.aisctl:main"]
+CONSOLE_SCRIPTS = ["aisctl = aistreams.python.cli.aisctl:main"]
 
 setuptools.setup(
     name="aistreams",
