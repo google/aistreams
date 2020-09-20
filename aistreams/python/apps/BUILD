@@ -60,7 +60,7 @@ cc_binary(
     deps = [
         "//aistreams/base:connection_options",
         "//aistreams/gstreamer:gstreamer_utils",
-        "//aistreams/gstreamer/gst-plugins:cli_builders",
+        "//aistreams/gstreamer/gst-plugins/cli_builders",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",

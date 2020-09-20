@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AISTREAMS_GSTREAMER_GST_PLUGINS_AISSRC_CLI_BUILDER_H_
-#define AISTREAMS_GSTREAMER_GST_PLUGINS_AISSRC_CLI_BUILDER_H_
+#ifndef AISTREAMS_GSTREAMER_GST_PLUGINS_CLI_BUILDERS_AISSINK_CLI_BUILDER_H_
+#define AISTREAMS_GSTREAMER_GST_PLUGINS_CLI_BUILDERS_AISSINK_CLI_BUILDER_H_
 
 #include <string>
 
@@ -27,22 +27,22 @@
 
 namespace aistreams {
 
-// Builder class to build the cli configurations for aissrc.
-class AissrcCliBuilder {
+// Builder class to build the cli configurations for aissink.
+class AissinkCliBuilder {
  public:
-  AissrcCliBuilder() = default;
+  AissinkCliBuilder() = default;
 
-  AissrcCliBuilder& SetTargetAddress(const std::string& target_address) {
+  AissinkCliBuilder& SetTargetAddress(const std::string& target_address) {
     target_address_ = target_address;
     return *this;
   }
 
-  AissrcCliBuilder& SetStreamName(const std::string& stream_name) {
+  AissinkCliBuilder& SetStreamName(const std::string& stream_name) {
     stream_name_ = stream_name;
     return *this;
   }
 
-  AissrcCliBuilder& SetSslOptions(const SslOptions& options) {
+  AissinkCliBuilder& SetSslOptions(const SslOptions& options) {
     use_insecure_channel_ = options.use_insecure_channel;
     if (!use_insecure_channel_) {
       ssl_domain_name_ = options.ssl_domain_name;
@@ -67,4 +67,4 @@ class AissrcCliBuilder {
 
 }  // namespace aistreams
 
-#endif  // AISTREAMS_GSTREAMER_GST_PLUGINS_AISSRC_CLI_BUILDER_H_
+#endif  // AISTREAMS_GSTREAMER_GST_PLUGINS_CLI_BUILDERS_AISSINK_CLI_BUILDER_H_

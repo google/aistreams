@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "aistreams/gstreamer/gst-plugins/aissink_cli_builder.h"
+#include "aistreams/gstreamer/gst-plugins/cli_builders/aissrc_cli_builder.h"
 
 #include <string>
 
@@ -41,7 +41,7 @@ std::string SetPluginParam(absl::string_view parameter_name,
 
 }  // namespace
 
-Status AissinkCliBuilder::ValidateSettings() const {
+Status AissrcCliBuilder::ValidateSettings() const {
   if (target_address_.empty()) {
     return InvalidArgumentError("Given an empty target address");
   }
@@ -59,10 +59,10 @@ Status AissinkCliBuilder::ValidateSettings() const {
   return OkStatus();
 }
 
-StatusOr<std::string> AissinkCliBuilder::Finalize() const {
+StatusOr<std::string> AissrcCliBuilder::Finalize() const {
   AIS_RETURN_IF_ERROR(ValidateSettings());
   std::vector<std::string> tokens;
-  tokens.push_back("aissink");
+  tokens.push_back("aissrc");
   tokens.push_back(SetPluginParam("target-address", target_address_));
   tokens.push_back(SetPluginParam("stream-name", stream_name_));
   tokens.push_back(

@@ -21,7 +21,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/time/time.h"
 #include "aistreams/cc/aistreams_lite.h"
-#include "aistreams/gstreamer/gst-plugins/aissink_cli_builder.h"
+#include "aistreams/gstreamer/gst-plugins/cli_builders/aissink_cli_builder.h"
 #include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
@@ -32,8 +32,6 @@ namespace aistreams {
 
 namespace {
 
-namespace {
-
 std::string SetPluginParam(absl::string_view parameter_name,
                            absl::string_view value) {
   if (value.empty()) {
@@ -41,8 +39,6 @@ std::string SetPluginParam(absl::string_view parameter_name,
   }
   return absl::StrFormat("%s=%s", parameter_name, value);
 }
-
-}  // namespace
 
 bool HasProtocolPrefix(const std::string& source_uri) {
   std::regex re("^.*://");

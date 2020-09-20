@@ -20,7 +20,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/time/time.h"
 #include "aistreams/base/connection_options.h"
-#include "aistreams/gstreamer/gst-plugins/aissrc_cli_builder.h"
+#include "aistreams/gstreamer/gst-plugins/cli_builders/aissrc_cli_builder.h"
 #include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
