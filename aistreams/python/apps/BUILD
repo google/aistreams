@@ -17,6 +17,13 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "apps",
+    srcs = [
+        "__init__.py",
+    ],
+)
+
 cc_binary(
     name = "ingester_app",
     srcs = [
