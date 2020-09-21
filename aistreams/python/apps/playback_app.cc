@@ -31,7 +31,7 @@ ABSL_FLAG(std::string, target_address, "localhost:50052",
           "Address (ip:port) to the AI Streams instance.");
 ABSL_FLAG(std::string, stream_name, "", "Name of the stream to play from.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use an insecure channel.");
-ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
+ABSL_FLAG(std::string, ssl_domain_name, "aistreams.googleapis.com",
           "The expected ssl domain name of the service.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");

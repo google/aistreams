@@ -55,7 +55,7 @@ ABSL_FLAG(std::string, stream_name, "", "Name of the stream to receiver from.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use insecure channel.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
-ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
+ABSL_FLAG(std::string, ssl_domain_name, "aistreams.googleapis.com",
           "The expected ssl domain name of the service.");
 ABSL_FLAG(int, op_id, -1,
           absl::StrFormat("Management operation ID. %s.", OpNameHelpString()));
@@ -153,7 +153,7 @@ void ListStreams() {
 
   auto streams = std::move(streams_statusor).ValueOrDie();
   if (streams.empty()) {
-    LOG(INFO) << "No stream found.\n";
+    LOG(INFO) << "No streams found.\n";
   } else {
     LOG(INFO) << absl::StrFormat("List (%d) streams: \n", streams.size());
     for (const auto& stream : streams) {
@@ -252,7 +252,7 @@ void ListClusters() {
 
   auto clusters = std::move(clusters_statusor).ValueOrDie();
   if (clusters.empty()) {
-    LOG(INFO) << "No cluster found.\n";
+    LOG(INFO) << "No clusters found.\n";
   } else {
     LOG(INFO) << absl::StrFormat("List (%d) clusters: \n", clusters.size());
     for (const auto& cluster : clusters) {

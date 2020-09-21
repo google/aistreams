@@ -29,7 +29,7 @@ ABSL_FLAG(std::string, target_address, "localhost:50051",
 ABSL_FLAG(std::string, stream_name, "", "Name of the stream to send to.");
 ABSL_FLAG(std::string, source_uri, "", "The uri of the input data source.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use an insecure channel.");
-ABSL_FLAG(std::string, ssl_domain_name, "aistreams.io",
+ABSL_FLAG(std::string, ssl_domain_name, "aistreams.googleapis.com",
           "The expected ssl domain name of the service.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
