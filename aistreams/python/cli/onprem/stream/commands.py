@@ -77,6 +77,7 @@ def _exec_manager_app(op_id, args):
 @click.option(
     "--ssl-domain-name",
     type=str,
+    default="aistreams.googleapis.com",
     help="Expected ssl domain name of the ingress.")
 @click.option(
     "--use-insecure-channel",
