@@ -18,6 +18,7 @@
 #define AISTREAMS_BASE_TYPES_RAW_IMAGE_HELPERS_H_
 
 #include "aistreams/port/status.h"
+#include "aistreams/port/statusor.h"
 #include "aistreams/proto/types/raw_image.pb.h"
 
 namespace aistreams {
@@ -26,7 +27,7 @@ namespace aistreams {
 int GetNumChannels(const RawImageFormat& format);
 
 // Get the expected buffer size specified by the given descriptor.
-size_t GetBufferSize(const RawImageDescriptor& desc);
+StatusOr<int> GetBufferSize(const RawImageDescriptor& desc);
 
 // Validate the given descriptor.
 Status Validate(const RawImageDescriptor& desc);

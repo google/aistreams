@@ -43,11 +43,18 @@ StatusOr<RawImageDescriptor> ValidateAndGetDescriptor(const Packet& p) {
     LOG(ERROR) << s;
     return InvalidArgumentError("Given an invalid RawImageDescriptor");
   }
-  if (p.payload().size() != GetBufferSize(raw_image_descriptor)) {
+
+  auto expected_payload_size_statusor = GetBufferSize(raw_image_descriptor);
+  if (!expected_payload_size_statusor.ok()) {
+    return expected_payload_size_statusor.status();
+  }
+  auto expected_payload_size =
+      std::move(expected_payload_size_statusor).ValueOrDie();
+  if (p.payload().size() != expected_payload_size) {
     return InvalidArgumentError(absl::StrFormat(
         "The given Packet's payload size is inconsistent with its "
         "RawImageDescriptor (%d vs %d)",
-        p.payload().size(), GetBufferSize(raw_image_descriptor)));
+        p.payload().size(), expected_payload_size));
   }
   return raw_image_descriptor;
 }

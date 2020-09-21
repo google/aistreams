@@ -46,6 +46,7 @@ cc_library(
     deps = [
         "//aistreams/port:logging",
         "//aistreams/port:status",
+        "//aistreams/port:statusor",
         "//aistreams/proto/types:raw_image_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",

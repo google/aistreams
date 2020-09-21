@@ -40,7 +40,9 @@ TEST(RawImageHelpersTest, GetBufferSizeTest) {
     desc.set_format(format);
     desc.set_height(height);
     desc.set_width(width);
-    EXPECT_EQ(GetBufferSize(desc), height * width * GetNumChannels(format));
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_TRUE(bufsize.ok());
+    EXPECT_EQ(bufsize.ValueOrDie(), height * width * GetNumChannels(format));
   }
   {
     int height = 480;
@@ -50,7 +52,33 @@ TEST(RawImageHelpersTest, GetBufferSizeTest) {
     desc.set_format(format);
     desc.set_height(height);
     desc.set_width(width);
-    EXPECT_EQ(GetBufferSize(desc), height * width * GetNumChannels(format));
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_TRUE(bufsize.ok());
+    EXPECT_EQ(bufsize.ValueOrDie(), height * width * GetNumChannels(format));
+  }
+  {
+    int height = 1 << 16;
+    int width = 1 << 16;
+    RawImageFormat format = RAW_IMAGE_FORMAT_SRGB;
+    RawImageDescriptor desc;
+    desc.set_format(format);
+    desc.set_height(height);
+    desc.set_width(width);
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_FALSE(bufsize.ok());
+    LOG(ERROR) << bufsize.status();
+  }
+  {
+    int height = 1 << 16;
+    int width = 1 << 15;
+    RawImageFormat format = RAW_IMAGE_FORMAT_SRGB;
+    RawImageDescriptor desc;
+    desc.set_format(format);
+    desc.set_height(height);
+    desc.set_width(width);
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_FALSE(bufsize.ok());
+    LOG(ERROR) << bufsize.status();
   }
 }
 
@@ -122,7 +150,9 @@ TEST(RawImageTest, HeightWidthFormatConstructorTest) {
     desc.set_format(format);
     desc.set_height(height);
     desc.set_width(width);
-    EXPECT_EQ(r.size(), GetBufferSize(desc));
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_TRUE(bufsize.ok());
+    EXPECT_EQ(r.size(), bufsize.ValueOrDie());
   }
   {
     int height = -1;
@@ -147,7 +177,9 @@ TEST(RawImageTest, RawImageDescriptorConstructorTest) {
     EXPECT_EQ(r.width(), width);
     EXPECT_EQ(r.format(), format);
     EXPECT_EQ(r.channels(), channels);
-    EXPECT_EQ(r.size(), GetBufferSize(desc));
+    auto bufsize = GetBufferSize(desc);
+    EXPECT_TRUE(bufsize.ok());
+    EXPECT_EQ(r.size(), bufsize.ValueOrDie());
   }
   {
     int height = 5;

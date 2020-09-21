@@ -40,7 +40,12 @@ RawImage::RawImage(int height, int width, RawImageFormat format) {
   width_ = desc.width();
   raw_image_format_ = desc.format();
   channels_ = GetNumChannels(desc.format());
-  data_.resize(GetBufferSize(desc));
+
+  auto image_buf_size_statusor = GetBufferSize(desc);
+  if (!image_buf_size_statusor.ok()) {
+    LOG(FATAL) << image_buf_size_statusor.status();
+  }
+  data_.resize(image_buf_size_statusor.ValueOrDie());
 }
 
 RawImage::RawImage(const RawImageDescriptor &desc, std::string &&bytes) {
@@ -48,11 +53,16 @@ RawImage::RawImage(const RawImageDescriptor &desc, std::string &&bytes) {
   if (!status.ok()) {
     LOG(FATAL) << status;
   }
-  if (GetBufferSize(desc) != bytes.size()) {
+  auto expected_bufsize_statusor = GetBufferSize(desc);
+  if (!expected_bufsize_statusor.ok()) {
+    LOG(FATAL) << expected_bufsize_statusor.status();
+  }
+  auto expected_bufsize = std::move(expected_bufsize_statusor).ValueOrDie();
+  if (static_cast<size_t>(expected_bufsize) != bytes.size()) {
     LOG(FATAL) << absl::StrFormat(
         "Attempted to move construct a RawImage expecting %d bytes with a "
         "string containing %d bytes",
-        GetBufferSize(desc), bytes.size());
+        expected_bufsize, bytes.size());
   }
   height_ = desc.height();
   width_ = desc.width();

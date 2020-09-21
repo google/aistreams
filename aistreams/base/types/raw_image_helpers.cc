@@ -46,8 +46,37 @@ Status Validate(const RawImageDescriptor& desc) {
   return OkStatus();
 }
 
-size_t GetBufferSize(const RawImageDescriptor& desc) {
-  return desc.height() * desc.width() * GetNumChannels(desc.format());
+StatusOr<int> GetBufferSize(const RawImageDescriptor& desc) {
+  int height = desc.height();
+  int width = desc.width();
+  int channels = GetNumChannels(desc.format());
+  if (height < 0 || width < 0 || channels < 0) {
+    return InvalidArgumentError(absl::StrFormat(
+        "The given raw image descriptor has negative dimensions/channels "
+        "(height=%d, width=%d, channels=%d). They must be non-negative.",
+        height, width, channels));
+  }
+
+  int pixels = 0;
+  auto overflow = __builtin_mul_overflow(height, width, &pixels);
+  if (overflow) {
+    return InvalidArgumentError(absl::StrFormat(
+        "Multiplication overflow when multiplying height (%d) and width (%d). "
+        "Please contact us if you really need an image this large.",
+        height, width));
+  }
+
+  int buf_size = 0;
+  overflow = __builtin_mul_overflow(pixels, channels, &buf_size);
+  if (overflow) {
+    return InvalidArgumentError(
+        absl::StrFormat("Multiplication overflow when multiply number of "
+                        "pixels (%d) and the number of channels (%d), Please "
+                        "contact us if you really need an image this large.",
+                        pixels, channels));
+  }
+
+  return buf_size;
 }
 
 }  // namespace aistreams
