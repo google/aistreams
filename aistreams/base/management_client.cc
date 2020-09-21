@@ -116,12 +116,6 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
-    auto status = UpdateContext(context);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
-      return InternalError("Failed to update context.");
-    }
-
     CreateStreamRequest request;
     CreateStreamResponse response;
     request.set_stream_name(stream.name());
@@ -139,12 +133,6 @@ class OnPremStreamManagerImpl : public StreamManager {
   virtual Status DeleteStream(const std::string& stream_name) override {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
-
-    auto status = UpdateContext(context);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
-      return InternalError("Failed to update context.");
-    }
 
     DeleteStreamRequest request;
     google::protobuf::Empty response;
@@ -165,12 +153,6 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     AIS_RETURN_IF_ERROR(FillGrpcClientContext(options_.rpc_options, &context));
 
-    auto status = UpdateContext(context);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
-      return InternalError("Failed to update context.");
-    }
-
     ListStreamRequest request;
     ListStreamResponse response;
     grpc::Status grpc_status = stub_->ListStream(&context, request, &response);
@@ -189,18 +171,6 @@ class OnPremStreamManagerImpl : public StreamManager {
   }
 
  private:
-  Status UpdateContext(grpc::ClientContext& context) {
-    auto token_statusor = GetIdTokenWithDefaultServiceAccount();
-    if (!token_statusor.ok()) {
-      LOG(ERROR) << token_statusor.status();
-      return InternalError("Failed to get token.");
-    }
-    context.AddMetadata(
-        kAuthorization,
-        absl::StrFormat(kTokenFormat, std::move(token_statusor).ValueOrDie()));
-    return OkStatus();
-  }
-
   Status Initialize() {
     auto grpc_channel = CreateGrpcChannel(options_);
     if (grpc_channel == nullptr) {
