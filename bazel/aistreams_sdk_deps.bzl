@@ -66,7 +66,7 @@ def aistreams_sdk_deps():
 
     maybe(
         http_archive,
-        name = "com_github_googleapis_googleapis",
+        name = "com_google_googleapis",
         sha256 = "2368a76f8f39582b45d119579f4c8674ddb119cd764f91b87383dac376087694",
         strip_prefix = "googleapis-369e0cd05493fc5fdd7be96c6dc3b141e9dd0c16",
         # 2020-09-10

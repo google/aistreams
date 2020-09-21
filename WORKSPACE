@@ -4,7 +4,7 @@ load("//bazel:aistreams_sdk_deps.bzl", "aistreams_sdk_deps")
 
 aistreams_sdk_deps()
 
-load("@com_github_googleapis_googleapis//:repository_rules.bzl", "switched_rules_by_language")
+load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
 
 switched_rules_by_language(
     name = "com_google_googleapis_imports",
