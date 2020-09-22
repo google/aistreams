@@ -253,7 +253,7 @@ class ManagedStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::DeleteStreamRequest request;
     ::google::longrunning::Operation operation;
-    request.set_name(stream_name);
+    request.set_name(absl::StrFormat("%s/streams/%s", parent_, stream_name));
     // Needs to add metadata. GFE needs the metadata for routing request.
     context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
     grpc::Status grpc_status =
@@ -379,7 +379,7 @@ class ClusterManagerImpl : public ClusterManager {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::DeleteClusterRequest request;
     ::google::longrunning::Operation operation;
-    request.set_name(cluster_name);
+    request.set_name(absl::StrFormat("%s/clusters/%s", parent_, cluster_name));
     // Needs to add metadata. GFE needs the metadata for routing request.
     context.AddMetadata(kGrpcMetadata, absl::StrFormat("parent=%s", parent_));
     grpc::Status grpc_status =
