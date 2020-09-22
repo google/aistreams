@@ -26,6 +26,8 @@
 
 ABSL_FLAG(std::string, target_address, "localhost:50051",
           "Address (ip:port) to the AI Streams instance.");
+ABSL_FLAG(bool, authenticate_with_google, false,
+          "Set to true for the managed service; otherwise false.");
 ABSL_FLAG(std::string, stream_name, "", "Name of the stream to send to.");
 ABSL_FLAG(std::string, source_uri, "", "The uri of the input data source.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use an insecure channel.");
@@ -43,6 +45,8 @@ void RunIngester() {
   IngesterOptions options;
   options.connection_options.target_address =
       absl::GetFlag(FLAGS_target_address);
+  options.connection_options.authenticate_with_google =
+      absl::GetFlag(FLAGS_authenticate_with_google);
   options.connection_options.ssl_options.use_insecure_channel =
       absl::GetFlag(FLAGS_use_insecure_channel);
   options.connection_options.ssl_options.ssl_domain_name =

@@ -37,6 +37,11 @@ class AissrcCliBuilder {
     return *this;
   }
 
+  AissrcCliBuilder& SetAuthenticateWithGoogle(bool authenticate_with_google) {
+    authenticate_with_google_ = authenticate_with_google;
+    return *this;
+  }
+
   AissrcCliBuilder& SetStreamName(const std::string& stream_name) {
     stream_name_ = stream_name;
     return *this;
@@ -58,6 +63,7 @@ class AissrcCliBuilder {
   Status ValidateSettings() const;
 
   std::string target_address_;
+  bool authenticate_with_google_;
   std::string stream_name_;
 
   bool use_insecure_channel_;

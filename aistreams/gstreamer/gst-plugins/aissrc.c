@@ -60,6 +60,7 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf);
 enum {
   PROP_0,
   PROP_TARGET_ADDRESS,
+  PROP_AUTHENTICATE_WITH_GOOGLE,
   PROP_STREAM_NAME,
   PROP_RECEIVER_NAME,
   PROP_TIMEOUT_IN_SEC,
@@ -94,6 +95,13 @@ static void ais_src_class_init(AisSrcClass *klass) {
       g_param_spec_string("target-address", "Target address",
                           "Address to the AI Streams instance", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property(
+      gobject_class, PROP_AUTHENTICATE_WITH_GOOGLE,
+      g_param_spec_boolean(
+          "authenticate-with-google", "Authenticate with Google",
+          "Set to true (false) when using the managed (onprem) service", FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_STREAM_NAME,
@@ -150,6 +158,7 @@ static void ais_src_class_init(AisSrcClass *klass) {
 
 static void ais_src_init(AisSrc *src) {
   src->target_address = g_strdup("");
+  src->authenticate_with_google = FALSE;
   src->stream_name = g_strdup("");
   src->receiver_name = g_strdup("");
   src->timeout_in_sec = -1;
@@ -327,6 +336,9 @@ static void ais_src_set_property(GObject *object, guint property_id,
     case PROP_TARGET_ADDRESS:
       ais_src_set_target_address(src, g_value_get_string(value), NULL);
       break;
+    case PROP_AUTHENTICATE_WITH_GOOGLE:
+      src->authenticate_with_google = g_value_get_boolean(value);
+      break;
     case PROP_STREAM_NAME:
       ais_src_set_stream_name(src, g_value_get_string(value), NULL);
       break;
@@ -357,6 +369,9 @@ static void ais_src_get_property(GObject *object, guint property_id,
   switch (property_id) {
     case PROP_TARGET_ADDRESS:
       g_value_set_string(value, src->target_address);
+      break;
+    case PROP_AUTHENTICATE_WITH_GOOGLE:
+      g_value_set_boolean(value, src->authenticate_with_google);
       break;
     case PROP_STREAM_NAME:
       g_value_set_string(value, src->stream_name);
@@ -476,6 +491,8 @@ static gboolean ais_src_start(GstBaseSrc *bsrc) {
 
   src->ais_connection_options = AIS_NewConnectionOptions();
   AIS_SetTargetAddress(src->target_address, src->ais_connection_options);
+  AIS_SetAuthenticateWithGoogle(src->authenticate_with_google,
+                                src->ais_connection_options);
   AIS_SetUseInsecureChannel(src->use_insecure_channel,
                             src->ais_connection_options);
   AIS_SetSslDomainName(src->ssl_domain_name, src->ais_connection_options);

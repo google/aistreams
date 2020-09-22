@@ -34,9 +34,6 @@ struct SslOptions {
   std::string ssl_domain_name;
 
   // This file path to the root CA certificate.
-  //
-  // TODO(yxyan, dschao): Look into ways to get this from a CA authority
-  // rather than having to pre-distribute copies.
   std::string ssl_root_cert_path;
 };
 
@@ -51,23 +48,43 @@ struct RpcOptions {
   bool wait_for_ready = true;
 };
 
-// Options to connect to a service in AI Streams.
+// AI Streams connection options.
+//
+// There are two modes of AI Streams deployment: onprem or google managed.
+// You may need to set the options below differently depending on which you are
+// using.
+//
+// TODO: The onprem/managed separation should be clearer and easier to use.
+// Please come back to clean this up.
 struct ConnectionOptions {
-  // This is the ip:port to an AI Streams service.
+  // ------------------------------------------------------------------------
+  // General options
+
+  // Address to the AI Streams service.
+  //
+  // For control plane operations in the google managed service (e.g. cluster,
+  // stream creation, deletion, list, etc.), set this to
+  // aistreams.googleapis.com.
+  //
+  // For data plane operations in the google managed service (e.g. send/receive
+  // packets) and all operations in the onprem service, set this to the ip:port
+  // of the k8s Ingress.
   std::string target_address;
 
-  // Options to authenticate with Google. The target address is in the format of
-  // 'xxx.googleapis.com' if authenticate_with_google is set to true.
-  // ```
-  // auto creds = grpc::GoogleDefaultCredentials();
-  // auto channel = grpc::CreateChannel("xxx.googleapis.com", creds);
-  // ```
+  // Set this to false for onprem; true for google managed.
   bool authenticate_with_google = false;
 
-  // Options to configure TLS/SSL over the communication channel.
+  // ------------------------------------------------------------------------
+  // Options for the k8s Ingress
+  //
+  // For onprem, these options are used for both control and data planes
+  // operations. For the managed service, these options are used only for data
+  // plane operations.
+
+  // Options to configure TLS/SSL.
   SslOptions ssl_options;
 
-  // Options to configure RPCs made over this connection.
+  // Options to configure RPCs.
   RpcOptions rpc_options;
 };
 

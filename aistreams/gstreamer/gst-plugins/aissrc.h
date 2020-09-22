@@ -45,6 +45,9 @@ struct _AisSrc {
   /* The address (ip:port) of the remote stream server. */
   gchar *target_address;
 
+  /* Set to true when using the google managed service; othweise false.*/
+  gboolean authenticate_with_google;
+
   /* The name of the server stream to read from. */
   gchar *stream_name;
 

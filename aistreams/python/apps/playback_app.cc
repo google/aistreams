@@ -29,6 +29,8 @@
 
 ABSL_FLAG(std::string, target_address, "localhost:50052",
           "Address (ip:port) to the AI Streams instance.");
+ABSL_FLAG(bool, authenticate_with_google, false,
+          "Set to true for the managed service; otherwise false.");
 ABSL_FLAG(std::string, stream_name, "", "Name of the stream to play from.");
 ABSL_FLAG(bool, use_insecure_channel, true, "Use an insecure channel.");
 ABSL_FLAG(std::string, ssl_domain_name, "aistreams.googleapis.com",
@@ -43,6 +45,7 @@ Status RunPlayback() {
 
   // Configure aissrc.
   std::string target_address = absl::GetFlag(FLAGS_target_address);
+  bool authenticate_with_google = absl::GetFlag(FLAGS_authenticate_with_google);
   std::string stream_name = absl::GetFlag(FLAGS_stream_name);
   SslOptions ssl_options;
   ssl_options.use_insecure_channel = absl::GetFlag(FLAGS_use_insecure_channel);
@@ -51,6 +54,7 @@ Status RunPlayback() {
   AissrcCliBuilder aissrc_cli_builder;
   auto aissrc_plugin_statusor =
       aissrc_cli_builder.SetTargetAddress(target_address)
+          .SetAuthenticateWithGoogle(authenticate_with_google)
           .SetStreamName(stream_name)
           .SetSslOptions(ssl_options)
           .Finalize();

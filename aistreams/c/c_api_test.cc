@@ -32,6 +32,11 @@ TEST(CAPI, ConnectionOptionsTest) {
   AIS_SetTargetAddress("localhost:50051", ais_options);
   EXPECT_EQ(options->target_address, "localhost:50051");
 
+  AIS_SetAuthenticateWithGoogle(0, ais_options);
+  EXPECT_FALSE(options->authenticate_with_google);
+  AIS_SetAuthenticateWithGoogle(1, ais_options);
+  EXPECT_TRUE(options->authenticate_with_google);
+
   AIS_SetUseInsecureChannel(0, ais_options);
   EXPECT_FALSE(options->ssl_options.use_insecure_channel);
   AIS_SetUseInsecureChannel(1, ais_options);

@@ -153,6 +153,8 @@ StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
   auto aissink_plugin_statusor =
       aissink_cli_builder
           .SetTargetAddress(options.connection_options.target_address)
+          .SetAuthenticateWithGoogle(
+              options.connection_options.authenticate_with_google)
           .SetStreamName(options.target_stream_name)
           .SetSslOptions(options.connection_options.ssl_options)
           .Finalize();

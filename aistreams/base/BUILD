@@ -55,12 +55,15 @@ cc_library(
     hdrs = ["stream_channel.h"],
     deps = [
         ":connection_options",
+        "//aistreams/base/util:auth_helpers",
         "//aistreams/base/util:grpc_helpers",
         "//aistreams/port:grpc++",
         "//aistreams/port:logging",
         "//aistreams/port:status",
         "//aistreams/port:statusor",
         "//aistreams/util:constants",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

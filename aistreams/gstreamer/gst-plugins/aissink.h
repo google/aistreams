@@ -45,6 +45,7 @@ struct _AisSink {
 
   gchar *target_address;
   gchar *stream_name;
+  gboolean authenticate_with_google;
   gboolean use_insecure_channel;
   gchar *ssl_domain_name;
   gchar *ssl_root_cert_path;

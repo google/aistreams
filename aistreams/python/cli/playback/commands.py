@@ -32,12 +32,13 @@ _PLAYBACK_APP_NAME = "playback_app"
     required=True,
     type=str,
     default="localhost:50051")
+@click.option("--authenticate-with-google", "-a", is_flag=True)
 @click.option("--ssl-root-cert-path", type=str)
 @click.option("--ssl-domain-name", type=str, default="aistreams.googleapis.com")
 @click.option("--use-insecure-channel", "-u", is_flag=True)
 @click.option("--stream-name", "-s", required=True, type=str)
-def cli(target_address, ssl_root_cert_path, ssl_domain_name,
-        use_insecure_channel, stream_name):
+def cli(target_address, authenticate_with_google, ssl_root_cert_path,
+        ssl_domain_name, use_insecure_channel, stream_name):
   """Playback a stream. The packet type must be convertible to a raw image."""
   playback_app_config = {
       "app_path":
@@ -45,6 +46,8 @@ def cli(target_address, ssl_root_cert_path, ssl_domain_name,
               pathlib.Path(apps.__file__).parents[0], _PLAYBACK_APP_NAME),
       "target_address":
           util.normalize_string_for_commandline(target_address),
+      "authenticate_with_google":
+          util.to_cpp_bool_string(authenticate_with_google),
       "ssl_domain_name":
           util.normalize_string_for_commandline(ssl_domain_name),
       "ssl_root_cert_path":
@@ -57,6 +60,7 @@ def cli(target_address, ssl_root_cert_path, ssl_domain_name,
 
   playback_app_cmd = ("{app_path} "
                       "--target_address={target_address} "
+                      "--authenticate_with_google={authenticate_with_google} "
                       "--ssl_root_cert_path={ssl_root_cert_path} "
                       "--ssl_domain_name={ssl_domain_name} "
                       "--stream_name={stream_name} "

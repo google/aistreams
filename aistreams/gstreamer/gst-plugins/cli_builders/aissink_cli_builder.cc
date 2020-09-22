@@ -64,6 +64,8 @@ StatusOr<std::string> AissinkCliBuilder::Finalize() const {
   std::vector<std::string> tokens;
   tokens.push_back("aissink");
   tokens.push_back(SetPluginParam("target-address", target_address_));
+  tokens.push_back(SetPluginParam("authenticate-with-google",
+                                  ToString(authenticate_with_google_)));
   tokens.push_back(SetPluginParam("stream-name", stream_name_));
   tokens.push_back(
       SetPluginParam("use-insecure-channel", ToString(use_insecure_channel_)));

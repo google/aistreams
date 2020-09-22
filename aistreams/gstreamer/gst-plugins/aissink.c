@@ -61,6 +61,7 @@ enum {
   PROP_0,
   PROP_TARGET_ADDRESS,
   PROP_STREAM_NAME,
+  PROP_AUTHENTICATE_WITH_GOOGLE,
   PROP_USE_INSECURE_CHANNEL,
   PROP_SSL_DOMAIN_NAME,
   PROP_SSL_ROOT_CERT_PATH,
@@ -96,6 +97,13 @@ static void ais_sink_class_init(AisSinkClass *klass) {
       g_param_spec_string("stream-name", "Stream name",
                           "Name of the destination stream", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property(
+      gobject_class, PROP_AUTHENTICATE_WITH_GOOGLE,
+      g_param_spec_boolean(
+          "authenticate-with-google", "Authenticate with Google",
+          "Set to true (false) when using the managed (onprem) service", FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(
       gobject_class, PROP_USE_INSECURE_CHANNEL,
@@ -136,6 +144,7 @@ static void ais_sink_init(AisSink *sink) {
   gst_base_sink_set_sync(GST_BASE_SINK(sink), TRUE);
   sink->target_address = g_strdup("");
   sink->stream_name = g_strdup("");
+  sink->authenticate_with_google = FALSE;
   sink->use_insecure_channel = FALSE;
   sink->ssl_domain_name = g_strdup("");
   sink->ssl_root_cert_path = g_strdup("");
@@ -281,6 +290,9 @@ static void ais_sink_set_property(GObject *object, guint property_id,
     case PROP_STREAM_NAME:
       ais_sink_set_stream_name(sink, g_value_get_string(value), NULL);
       break;
+    case PROP_AUTHENTICATE_WITH_GOOGLE:
+      sink->authenticate_with_google = g_value_get_boolean(value);
+      break;
     case PROP_USE_INSECURE_CHANNEL:
       sink->use_insecure_channel = g_value_get_boolean(value);
       break;
@@ -306,6 +318,9 @@ static void ais_sink_get_property(GObject *object, guint property_id,
       break;
     case PROP_STREAM_NAME:
       g_value_set_string(value, sink->stream_name);
+      break;
+    case PROP_AUTHENTICATE_WITH_GOOGLE:
+      g_value_set_boolean(value, sink->authenticate_with_google);
       break;
     case PROP_USE_INSECURE_CHANNEL:
       g_value_set_boolean(value, sink->use_insecure_channel);
@@ -356,6 +371,8 @@ static gboolean ais_sink_start(GstBaseSink *bsink) {
 
   sink->ais_connection_options = AIS_NewConnectionOptions();
   AIS_SetTargetAddress(sink->target_address, sink->ais_connection_options);
+  AIS_SetAuthenticateWithGoogle(sink->authenticate_with_google,
+                                sink->ais_connection_options);
   AIS_SetUseInsecureChannel(sink->use_insecure_channel,
                             sink->ais_connection_options);
   AIS_SetSslDomainName(sink->ssl_domain_name, sink->ais_connection_options);

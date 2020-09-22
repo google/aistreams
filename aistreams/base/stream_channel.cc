@@ -14,6 +14,8 @@
 
 #include "aistreams/base/stream_channel.h"
 
+#include "absl/strings/str_format.h"
+#include "aistreams/base/util/auth_helpers.h"
 #include "aistreams/base/util/grpc_helpers.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
@@ -44,6 +46,19 @@ StreamChannel::MakeClientContext() const {
   // field is used to redirect.
   if (!options_.stream_name.empty()) {
     ctx->AddMetadata(kStreamMetadataKeyName, options_.stream_name);
+  }
+
+  // Active only for the managed service. This fetches the JWT token and uses it
+  // to authenticate against the k8s Ingress.
+  if (options_.connection_options.authenticate_with_google) {
+    auto token_statusor = GetIdTokenWithDefaultServiceAccount();
+    if (!token_statusor.ok()) {
+      LOG(ERROR) << token_statusor.status();
+      return InternalError("Failed to get token.");
+    }
+    ctx->AddMetadata(
+        "authorization",
+        absl::StrFormat("Bearer %s", std::move(token_statusor).ValueOrDie()));
   }
 
   // Configure the RPC options.

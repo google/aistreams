@@ -55,31 +55,29 @@ void AIS_DeleteConnectionOptions(AIS_ConnectionOptions* ais_options) {
   delete ais_options;
 }
 
-// Set the target address (ip:port) to the server.
 void AIS_SetTargetAddress(const char* target_address,
                           AIS_ConnectionOptions* ais_options) {
   ais_options->connection_options.target_address = ToString(target_address);
 }
 
-// Use an insecure connection to the server.
+void AIS_SetAuthenticateWithGoogle(unsigned char authenticate_with_google,
+                                   AIS_ConnectionOptions* ais_options) {
+  ais_options->connection_options.authenticate_with_google =
+      authenticate_with_google;
+}
+
 void AIS_SetUseInsecureChannel(unsigned char use_insecure_channel,
                                AIS_ConnectionOptions* ais_options) {
   ais_options->connection_options.ssl_options.use_insecure_channel =
       use_insecure_channel;
 }
 
-// Set the expected SSL domain name of the server.
-//
-// You are required to supply this if you do not use an insecure channel.
 void AIS_SetSslDomainName(const char* ssl_domain_name,
                           AIS_ConnectionOptions* ais_options) {
   ais_options->connection_options.ssl_options.ssl_domain_name =
       ToString(ssl_domain_name);
 }
 
-// Set the path to the root CA certificate.
-//
-// You are required to supply this if you do not use an insecure channel.
 void AIS_SetSslRootCertPath(const char* ssl_root_cert_path,
                             AIS_ConnectionOptions* ais_options) {
   ais_options->connection_options.ssl_options.ssl_root_cert_path =

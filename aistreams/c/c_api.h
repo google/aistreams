@@ -51,9 +51,13 @@ extern AIS_ConnectionOptions* AIS_NewConnectionOptions(void);
 // Delete a connection options object.
 extern void AIS_DeleteConnectionOptions(AIS_ConnectionOptions*);
 
-// Set the target address (ip:port) to the server.
+// Set the target address (ip:port) to the server (the k8s Ingress).
 extern void AIS_SetTargetAddress(const char* target_adress,
                                  AIS_ConnectionOptions* options);
+
+// Set to 1 when interacting with the google managed service; 0 otherwise.
+extern void AIS_SetAuthenticateWithGoogle(
+    unsigned char authenticate_with_google, AIS_ConnectionOptions* options);
 
 // Set whether to use an insecure connection to the server.
 extern void AIS_SetUseInsecureChannel(unsigned char use_insecure_channel,
