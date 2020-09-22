@@ -41,11 +41,8 @@ constexpr char kGoogleApplicationCredentials[] =
 }  // namespace
 
 StatusOr<std::string> GetIdToken(const std::string& service_account) {
-  ConnectionOptions options;
-  options.target_address = kIAMGoogleAPI;
-  options.authenticate_with_google = true;
-  auto channel = CreateGrpcChannel(options);
-
+  auto channel =
+      grpc::CreateChannel(kIAMGoogleAPI, grpc::GoogleDefaultCredentials());
   std::unique_ptr<IAMCredentials::Stub> stub(IAMCredentials::NewStub(channel));
 
   GenerateIdTokenRequest request;

@@ -51,10 +51,8 @@ void ReplaceServiceEndpointPort(std::string& endpoint) {
 StatusOr<Operation> WaitOperation(const std::string& operation_name,
                                   const std::string& service_name,
                                   const std::string& parent) {
-  ConnectionOptions options;
-  options.authenticate_with_google = true;
-  options.target_address = service_name;
-  auto channel = CreateGrpcChannel(options);
+  auto channel =
+      grpc::CreateChannel(service_name, grpc::GoogleDefaultCredentials());
   if (channel == nullptr) {
     return UnknownError("Failed to create a gRPC channel");
   }
@@ -231,7 +229,7 @@ class ManagedStreamManagerImpl : public StreamManager {
     }
 
     auto operation_statusor =
-        WaitOperation(operation.name(), options_.target_address, parent_);
+        WaitOperation(operation.name(), target_address_, parent_);
     if (!operation_statusor.ok()) {
       LOG(ERROR) << operation_statusor.status();
       return UnknownError("Encountered error deleting stream");
@@ -263,7 +261,7 @@ class ManagedStreamManagerImpl : public StreamManager {
     }
 
     auto operation_statusor =
-        WaitOperation(operation.name(), options_.target_address, parent_);
+        WaitOperation(operation.name(), target_address_, parent_);
     if (!operation_statusor.ok()) {
       LOG(ERROR) << operation_statusor.status();
       return UnknownError("Encountered error deleting stream");
@@ -299,7 +297,8 @@ class ManagedStreamManagerImpl : public StreamManager {
 
  private:
   Status Initialize() {
-    auto channel = CreateGrpcChannel(options_);
+    auto channel =
+        grpc::CreateChannel(target_address_, grpc::GoogleDefaultCredentials());
     if (channel == nullptr) {
       return UnknownError("Failed to create a gRPC channel");
     }
@@ -311,14 +310,12 @@ class ManagedStreamManagerImpl : public StreamManager {
   }
 
   ManagedStreamManagerImpl(const StreamManagerManagedConfig& config)
-      : parent_(absl::StrFormat("projects/%s/locations/%s/clusters/%s",
+      : target_address_(config.target_address()),
+        parent_(absl::StrFormat("projects/%s/locations/%s/clusters/%s",
                                 config.project(), config.location(),
-                                config.cluster())) {
-    options_.target_address = config.target_address();
-    options_.authenticate_with_google = true;
-  }
+                                config.cluster())) {}
 
-  ConnectionOptions options_;
+  const std::string target_address_;
   std::unique_ptr<AIStreams::Stub> stub_ = nullptr;
   const std::string parent_;
 };
@@ -351,7 +348,7 @@ class ClusterManagerImpl : public ClusterManager {
     }
 
     auto operation_statusor =
-        WaitOperation(operation.name(), options_.target_address, parent_);
+        WaitOperation(operation.name(), target_address_, parent_);
     if (!operation_statusor.ok()) {
       LOG(ERROR) << operation_statusor.status();
       return UnknownError("Encountered error creating cluster");
@@ -390,7 +387,7 @@ class ClusterManagerImpl : public ClusterManager {
     }
 
     auto operation_statusor =
-        WaitOperation(operation.name(), options_.target_address, parent_);
+        WaitOperation(operation.name(), target_address_, parent_);
     if (!operation_statusor.ok()) {
       LOG(ERROR) << operation_statusor.status();
       return UnknownError("Encountered error deleting cluster");
@@ -457,7 +454,8 @@ class ClusterManagerImpl : public ClusterManager {
 
  private:
   Status Initialize() {
-    auto channel = CreateGrpcChannel(options_);
+    auto channel =
+        grpc::CreateChannel(target_address_, grpc::GoogleDefaultCredentials());
     if (channel == nullptr) {
       return UnknownError("Failed to create a gRPC channel");
     }
@@ -469,13 +467,11 @@ class ClusterManagerImpl : public ClusterManager {
   }
 
   ClusterManagerImpl(const ClusterManagerConfig& config)
-      : parent_(absl::StrFormat("projects/%s/locations/%s", config.project(),
-                                config.location())) {
-    options_.target_address = config.target_address();
-    options_.authenticate_with_google = true;
-  }
+      : target_address_(config.target_address()),
+        parent_(absl::StrFormat("projects/%s/locations/%s", config.project(),
+                                config.location())) {}
 
-  ConnectionOptions options_;
+  const std::string target_address_;
   std::unique_ptr<AIStreams::Stub> stub_ = nullptr;
   const std::string parent_;
 };
