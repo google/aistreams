@@ -28,10 +28,10 @@ struct SslOptions {
   // Use an insecure channel to connect to the server.
   //
   // If false, then you have to review and the fields below as appropriate.
-  bool use_insecure_channel = true;
+  bool use_insecure_channel = false;
 
   // The expected ssl domain name of the server.
-  std::string ssl_domain_name;
+  std::string ssl_domain_name = "aistreams.googleapis.com";
 
   // This file path to the root CA certificate.
   std::string ssl_root_cert_path;
