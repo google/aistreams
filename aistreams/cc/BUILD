@@ -8,6 +8,10 @@ cc_library(
     hdrs = [
         "aistreams.h",
     ],
+    data = [
+        "//aistreams/gstreamer/gst-plugins:libaissink.so",
+        "//aistreams/gstreamer/gst-plugins:libaissrc.so",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":aistreams_lite",
