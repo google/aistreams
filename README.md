@@ -71,9 +71,9 @@ Here are the steps to enable it:
     -   Type in "AI Streams" in the search box.
     -   Click on "AI Streams API" and click on "Enable".
 
-Now you are ready to [manage streams](## Stream Management) and send traffic
+Now you are ready to [manage streams](#stream-management) and send traffic
 to/from them. But make sure you have the necessary SDK components
-[installed](## SDK System Requirements).
+[installed](#sdk-system-requirements).
 
 ### Hosting AI Streams On-prem
 
@@ -83,10 +83,10 @@ Please contact us if you are interested in this option.
 
 We have tested our SDK on Ubuntu 18.04 (and similar Linux distributions). If you
 have a different bare metal setup, then we suggest that you use aisctl through
-its Docker image ([discussed below](#### Using aisctl through Docker)) and use
-our C++ Programming API using our base development Docker image
-([also discussed below](#### Base development image)) or use it as a reference
-to create your own Dockerfile.
+its Docker image ([discussed below](#using-aisctl-through-docker)) and use our
+C++ Programming API using our base development Docker image
+([also discussed below](#base-development-image)) or use it as a reference to
+create your own Dockerfile.
 
 Below are the system requirements (you can just take the default debians on
 Ubuntu 18.04).
@@ -104,13 +104,15 @@ Ubuntu 18.04).
     -   gstreamer1.0-libav
 
 You only need the -dev Debians if you plan to build our library / use the C++
-programming API. Feel free to take a look at our [Dockerfiles] to steps that you
-can follow.
+programming API. Feel free to take a look at our
+[Dockerfiles](https://github.com/google/aistreams/tree/master/docker) to steps
+that you can follow.
 
 ### Downloading and Installing Pre-Built Binaries
 
-You can download aisctl from our [releases page](). It is a python3 pip wheel
-that you can install like so:
+You can download aisctl from our
+[releases page](https://github.com/google/aistreams/releases). It is a python3
+pip wheel that you can install like so:
 
 ```shell
 pip install aistreams-<version>-py3-none-any.whl
@@ -189,7 +191,7 @@ more details.
 ### Managing clusters
 
 This is necessary only for the Google managed service. If you are on-prem you
-can skip to [managing streams](### Managing streams).
+can skip to [managing streams](#managing-streams).
 
 #### Creating a cluster
 
@@ -215,8 +217,8 @@ aisctl managed cluster --project-id my-project list
 ```
 
 This command will list all of your existing clusters along with the details
-necessary to connect to them later in [managing streams](### Managing streams).
-In particular, it will print the following for each available cluster:
+necessary to connect to them later in [managing streams](#managing-streams). In
+particular, it will print the following for each available cluster:
 
 -   The address to the data ingress. This is the ip:port to the data ingress, to
     which you will direct your stream I/O operations to.
@@ -245,7 +247,7 @@ or money.
 
 We will go over how you can manage streams using aisctl, and specifically for
 the Google managed service. We will go over how to do this on-prem in the
-[last subsection](#### Managing streams on-prem).
+[last subsection](#managing-streams-on-prem).
 
 #### Creating a stream
 
@@ -311,7 +313,9 @@ endpoint and the ssl certificate.
 
 We will go over how you can ingest/playback a video source using aisctl. For
 other use patterns that require the C++ Programming API, we refer you to the
-code samples under the [examples](TODO) directory.
+code samples under the
+[tutorials](https://github.com/google/aistreams/tree/master/tutorials)
+directory.
 
 ### Ingesting a video source
 
