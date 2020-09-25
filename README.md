@@ -95,6 +95,8 @@ Ubuntu 18.04).
 -   Gstreamer libraries.
     -   libgstreamer1.0-0
     -   libgstreamer-plugins-base1.0-dev
+    -   libgstrtspserver-1.0-0
+    -   libgstrtspserver-1.0-dev
     -   gstreamer1.0-dev
     -   gstreamer1.0-plugins-base
     -   gstreamer1.0-plugins-base-apps
