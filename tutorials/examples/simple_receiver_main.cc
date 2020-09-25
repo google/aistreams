@@ -26,7 +26,7 @@
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
-#include "tutorials/hello.pb.h"
+#include "examples/hello.pb.h"
 
 ABSL_FLAG(std::string, target_address, "",
           "Address (ip:port) to the data ingress.");
@@ -98,15 +98,15 @@ Status RunReceiver() {
     // a Greeting. For this, you use PacketAs to adapt it to a Greeting.
     //
     // See aistreams/base/packet_as.h for more info on PacketAs.
-    // See tutorials/hello.proto for the Greeting message.
-    PacketAs<tutorial::Greeting> packet_as(std::move(p));
+    // See examples/hello.proto for the Greeting message.
+    PacketAs<examples::Greeting> packet_as(std::move(p));
     if (!packet_as.ok()) {
       LOG(ERROR) << packet_as.status();
       return UnknownError(
           "The server gave a non-Greeting Packet. Call upstream ingester "
           "and/or Google NOW!!");
     }
-    tutorial::Greeting greeting = std::move(packet_as).ValueOrDie();
+    examples::Greeting greeting = std::move(packet_as).ValueOrDie();
 
     // Print the contents of the greeting.
     LOG(INFO) << greeting.DebugString();

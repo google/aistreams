@@ -28,7 +28,7 @@
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
-#include "tutorials/hello.pb.h"
+#include "examples/hello.pb.h"
 
 ABSL_FLAG(std::string, target_address, "",
           "Address (ip:port) to the data ingress.");
@@ -80,7 +80,7 @@ Status RunSender() {
     return UnknownError("Failed to create a packet sender");
   }
 
-  // Send data packets. In this case, we keep sending the tutorial's Greeting
+  // Send data packets. In this case, we keep sending the Greeting
   // message, just populated differently.
   //
   // Obviously, this is perhaps not all that useful in real life. But the
@@ -93,7 +93,7 @@ Status RunSender() {
 
   for (int i = 0; i < greeting_iterations; ++i) {
     // Populate the greeting message.
-    tutorial::Greeting greeting;
+    examples::Greeting greeting;
     greeting.set_iterations(i + 1);
     greeting.set_greeting(greeting_message);
 
@@ -111,6 +111,7 @@ Status RunSender() {
 
     // Send the Packet.
     auto status = sender->Send(packet);
+    LOG(INFO) << "Sent " << i+1 << "'th packet.";
     if (!status.ok()) {
       LOG(ERROR) << status;
       return UnknownError("Failed to send a packet.");

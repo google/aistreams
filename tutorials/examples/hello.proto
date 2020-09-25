@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package tutorial;
+package examples;
 
 // This is just a message used in the tutorial.
 message Greeting {

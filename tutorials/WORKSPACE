@@ -1,0 +1,42 @@
+workspace(name = "tutorials")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "com_github_google_aistreams",
+    strip_prefix = "aistreams-master",
+    url = "https://github.com/google/aistreams/archive/master.tar.gz",
+)
+
+# Requirements for @com_github_google_aistreams.
+#
+# You may also customize this rule depending on how your system installed gstreamer.
+#
+# TODO: Remove this requirement.
+new_local_repository(
+    name = "gstreamer",
+    build_file = "@com_github_google_aistreams//third_party:gstreamer.BUILD",
+    path = "/usr",
+)
+
+load("@com_github_google_aistreams//bazel:aistreams_sdk_deps.bzl", "aistreams_sdk_deps")
+
+aistreams_sdk_deps()
+
+# Requirements for @com_google_googleapis_imports.
+load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
+
+switched_rules_by_language(
+    name = "com_google_googleapis_imports",
+    cc = True,
+    grpc = True,
+)
+
+# Requirements for @com_github_grpc_grpc.
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+
+grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+
+grpc_extra_deps()
