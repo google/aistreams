@@ -102,10 +102,16 @@ Status PacketSender::Send(const Packet& packet) {
 
 PacketSender::~PacketSender() {
   if (streaming_writer_ != nullptr) {
-    streaming_writer_->WritesDone();
+    if (!streaming_writer_->WritesDone()) {
+      LOG(ERROR)
+          << "Could not signal WritesDone() to gRPC server during cleanup";
+    }
     grpc::Status grpc_status = streaming_writer_->Finish();
     if (!grpc_status.ok()) {
-      LOG(ERROR) << grpc_status.error_message();
+      LOG(ERROR) << "Could not Finish() the streaming writer during cleanup. "
+                    "gRPC error code: "
+                 << static_cast<int>(grpc_status.error_code())
+                 << ", error message: " << grpc_status.error_message();
     }
   }
 }

@@ -45,7 +45,7 @@ struct RpcOptions {
 
   // If true, then block until the underlying communication channel
   // becomes ready instead of failing fast.
-  bool wait_for_ready = true;
+  bool wait_for_ready = false;
 };
 
 // AI Streams connection options.
