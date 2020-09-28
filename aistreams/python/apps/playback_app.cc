@@ -37,6 +37,9 @@ ABSL_FLAG(std::string, ssl_domain_name, "aistreams.googleapis.com",
           "The expected ssl domain name of the service.");
 ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
+ABSL_FLAG(int, timeout_in_sec, 5,
+          "The timeout (in seconds) to wait for the server to deliver a "
+          "packet. -1 to for an unbounded timeout");
 
 namespace aistreams {
 
@@ -51,12 +54,14 @@ Status RunPlayback() {
   ssl_options.use_insecure_channel = absl::GetFlag(FLAGS_use_insecure_channel);
   ssl_options.ssl_domain_name = absl::GetFlag(FLAGS_ssl_domain_name);
   ssl_options.ssl_root_cert_path = absl::GetFlag(FLAGS_ssl_root_cert_path);
+  int timeout_in_sec = absl::GetFlag(FLAGS_timeout_in_sec);
   AissrcCliBuilder aissrc_cli_builder;
   auto aissrc_plugin_statusor =
       aissrc_cli_builder.SetTargetAddress(target_address)
           .SetAuthenticateWithGoogle(authenticate_with_google)
           .SetStreamName(stream_name)
           .SetSslOptions(ssl_options)
+          .SetTimeoutInSec(timeout_in_sec)
           .Finalize();
   if (!aissrc_plugin_statusor.ok()) {
     LOG(ERROR) << aissrc_plugin_statusor.status();

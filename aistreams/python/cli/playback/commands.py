@@ -37,8 +37,9 @@ _PLAYBACK_APP_NAME = "playback_app"
 @click.option("--ssl-domain-name", type=str, default="aistreams.googleapis.com")
 @click.option("--use-insecure-channel", "-u", is_flag=True)
 @click.option("--stream-name", "-s", required=True, type=str)
+@click.option("--timeout-in-sec", default=5, type=int)
 def cli(target_address, authenticate_with_google, ssl_root_cert_path,
-        ssl_domain_name, use_insecure_channel, stream_name):
+        ssl_domain_name, use_insecure_channel, stream_name, timeout_in_sec):
   """Playback a stream. The packet type must be convertible to a raw image."""
   playback_app_config = {
       "app_path":
@@ -56,6 +57,8 @@ def cli(target_address, authenticate_with_google, ssl_root_cert_path,
           util.normalize_string_for_commandline(stream_name),
       "use_insecure_channel":
           util.to_cpp_bool_string(use_insecure_channel),
+      "timeout_in_sec":
+          timeout_in_sec,
   }
 
   playback_app_cmd = ("{app_path} "
@@ -64,6 +67,7 @@ def cli(target_address, authenticate_with_google, ssl_root_cert_path,
                       "--ssl_root_cert_path={ssl_root_cert_path} "
                       "--ssl_domain_name={ssl_domain_name} "
                       "--stream_name={stream_name} "
+                      "--timeout_in_sec={timeout_in_sec} "
                       "--use_insecure_channel={use_insecure_channel} ".format(
                           **playback_app_config))
   logging.debug("Executing command %s.", playback_app_cmd)
