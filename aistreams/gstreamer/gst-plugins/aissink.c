@@ -392,6 +392,8 @@ failed_new_sender : {
   GST_ELEMENT_ERROR(sink, RESOURCE, NOT_FOUND,
                     ("%s", AIS_Message(sink->ais_status)),
                     ("%s", AIS_Message(sink->ais_status)));
+  AIS_Log(AIS_ERROR, AIS_Message(sink->ais_status));
+  AIS_Log(AIS_ERROR, "Failed to create a new sender");
   return FALSE;
 }
 }
@@ -419,6 +421,8 @@ failed_eos_send : {
   GST_ELEMENT_WARNING(sink, STREAM, FAILED,
                       ("%s", AIS_Message(sink->ais_status)),
                       ("%s", AIS_Message(sink->ais_status)));
+  AIS_Log(AIS_ERROR, AIS_Message(sink->ais_status));
+  AIS_Log(AIS_ERROR, "Could not send an EOS packet");
   goto done;
 }
 }
@@ -478,7 +482,13 @@ failed_send_packet : {
   GST_ELEMENT_WARNING(sink, STREAM, FAILED,
                       ("%s", AIS_Message(sink->ais_status)),
                       ("%s", AIS_Message(sink->ais_status)));
-  goto done;
+  AIS_Log(AIS_ERROR, AIS_Message(sink->ais_status));
+  AIS_Log(AIS_ERROR,
+          "Please double check the ingress endpoint and stream name you "
+          "provided are valid");
+  AIS_DeleteGstreamerBuffer(ais_gstreamer_buffer);
+  AIS_DeletePacket(packet);
+  return GST_FLOW_ERROR;
 }
 }
 

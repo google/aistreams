@@ -71,6 +71,8 @@ StatusOr<std::string> AissrcCliBuilder::Finalize() const {
       SetPluginParam("use-insecure-channel", ToString(use_insecure_channel_)));
   tokens.push_back(SetPluginParam("ssl-domain-name", ssl_domain_name_));
   tokens.push_back(SetPluginParam("ssl-root-cert-path", ssl_root_cert_path_));
+  tokens.push_back(
+      SetPluginParam("timeout-in-sec", std::to_string(timeout_in_sec_)));
   return absl::StrJoin(tokens, " ");
 }
 

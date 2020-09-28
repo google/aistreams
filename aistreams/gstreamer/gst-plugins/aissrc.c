@@ -424,8 +424,11 @@ static GstFlowReturn ais_src_create(GstPushSrc *psrc, GstBuffer **outbuf) {
     goto failed_receive_packet;
   }
 
-  if (AIS_IsEos(ais_packet, NULL)) {
+  char *reason;
+  if (AIS_IsEos(ais_packet, &reason)) {
     ret = GST_FLOW_EOS;
+    AIS_Log(AIS_INFO, reason);
+    free(reason);
     goto finalize;
   }
 
@@ -468,6 +471,8 @@ finalize:
 failed_receive_packet : {
   GST_ELEMENT_ERROR(src, LIBRARY, FAILED, ("%s", AIS_Message(src->ais_status)),
                     ("%s", AIS_Message(src->ais_status)));
+  AIS_Log(AIS_ERROR, AIS_Message(src->ais_status));
+  AIS_Log(AIS_ERROR, "Failed to receive packets");
   goto finalize;
 }
 
@@ -511,6 +516,8 @@ failed_new_receiver : {
   GST_ELEMENT_ERROR(src, RESOURCE, NOT_FOUND,
                     ("%s", AIS_Message(src->ais_status)),
                     ("%s", AIS_Message(src->ais_status)));
+  AIS_Log(AIS_ERROR, AIS_Message(src->ais_status));
+  AIS_Log(AIS_ERROR, "Failed to create a new receiver");
   return FALSE;
 }
 }

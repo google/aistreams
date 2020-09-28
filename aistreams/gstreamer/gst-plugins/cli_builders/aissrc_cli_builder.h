@@ -56,6 +56,11 @@ class AissrcCliBuilder {
     return *this;
   }
 
+  AissrcCliBuilder& SetTimeoutInSec(int timeout_in_sec) {
+    timeout_in_sec_ = timeout_in_sec;
+    return *this;
+  }
+
   // On success, returns the gstreamer commandline configuration string.
   StatusOr<std::string> Finalize() const;
 
@@ -67,6 +72,7 @@ class AissrcCliBuilder {
   std::string stream_name_;
 
   bool use_insecure_channel_;
+  int timeout_in_sec_;
   std::string ssl_domain_name_;
   std::string ssl_root_cert_path_;
 };
