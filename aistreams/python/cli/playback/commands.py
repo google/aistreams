@@ -31,15 +31,43 @@ _PLAYBACK_APP_NAME = "playback_app"
     "-t",
     required=True,
     type=str,
-    default="localhost:50051")
-@click.option("--authenticate-with-google", "-a", is_flag=True)
-@click.option("--ssl-root-cert-path", type=str)
+    default="localhost:50051",
+    help="The ip:port to the ingress.")
+@click.option(
+    "--authenticate-with-google",
+    "-a",
+    is_flag=True,
+    help="Pass this if and only if you are using the Google managed service.")
+@click.option(
+    "--ssl-root-cert-path",
+    type=str,
+    help="The path to the ssl certificate of the ingress.")
 @click.option("--ssl-domain-name", type=str, default="aistreams.googleapis.com")
 @click.option("--use-insecure-channel", "-u", is_flag=True)
-@click.option("--stream-name", "-s", required=True, type=str)
-@click.option("--timeout-in-sec", default=5, type=int)
+@click.option(
+    "--stream-name",
+    "-s",
+    required=True,
+    type=str,
+    help="The name of the stream to playback from.")
+@click.option(
+    "--receiver-timeout",
+    default=5,
+    type=int,
+    help="The timeout (in seconds) for the server to yield a packet.")
+@click.option(
+    "--playback-duration",
+    default=-1,
+    help="Maximum playback duration in seconds. -1 for no constraints.")
+@click.option(
+    "--output-mp4",
+    "-o",
+    default="",
+    help="If non-empty, save the playback to a mp4 file. Otherwise, render to screen."
+)
 def cli(target_address, authenticate_with_google, ssl_root_cert_path,
-        ssl_domain_name, use_insecure_channel, stream_name, timeout_in_sec):
+        ssl_domain_name, use_insecure_channel, stream_name, receiver_timeout,
+        playback_duration, output_mp4):
   """Playback a stream. The packet type must be convertible to a raw image."""
   playback_app_config = {
       "app_path":
@@ -58,7 +86,11 @@ def cli(target_address, authenticate_with_google, ssl_root_cert_path,
       "use_insecure_channel":
           util.to_cpp_bool_string(use_insecure_channel),
       "timeout_in_sec":
-          timeout_in_sec,
+          receiver_timeout,
+      "playback_duration_in_sec":
+          playback_duration,
+      "output_mp4":
+          util.normalize_string_for_commandline(output_mp4),
   }
 
   playback_app_cmd = ("{app_path} "
@@ -67,6 +99,8 @@ def cli(target_address, authenticate_with_google, ssl_root_cert_path,
                       "--ssl_root_cert_path={ssl_root_cert_path} "
                       "--ssl_domain_name={ssl_domain_name} "
                       "--stream_name={stream_name} "
+                      "--playback_duration_in_sec={playback_duration_in_sec} "
+                      "--output_mp4={output_mp4} "
                       "--timeout_in_sec={timeout_in_sec} "
                       "--use_insecure_channel={use_insecure_channel} ".format(
                           **playback_app_config))

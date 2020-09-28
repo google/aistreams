@@ -33,7 +33,19 @@ Status GstInit();
 // Launch a gstreamer pipeline and block until it is done.
 //
 // `gst_pipeline`: This is a string that you would normally pass to gst-launch.
+// `play_duration_in_seconds`: This is the maximum amount of time to run the
+//                             pipeline for. Set it to -1 if you do not want a
+//                             cap.
+//                             The run will always end if the pipeline itself
+//                             signals EOS, even if the bound hasn't been
+//                             reached. (e.g. if the input source actually
+//                             ends).
+//
+// The single argument overload applies no bound to the play duration (it just
+// passes -1 to play_duration_in_seconds).
 Status GstLaunchPipeline(const std::string& gst_pipeline);
+Status GstLaunchPipeline(const std::string& gst_pipeline,
+                         int play_duration_in_seconds);
 
 }  // namespace aistreams
 

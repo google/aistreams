@@ -40,6 +40,12 @@ ABSL_FLAG(std::string, ssl_root_cert_path, "",
 ABSL_FLAG(int, timeout_in_sec, 5,
           "The timeout (in seconds) to wait for the server to deliver a "
           "packet. -1 to for an unbounded timeout");
+ABSL_FLAG(int, playback_duration_in_sec, -1,
+          "The maximum amount of time to playback (in seconds). -1 removes "
+          "this bound.");
+ABSL_FLAG(std::string, output_mp4, "",
+          "If non-empty, save the playback as an mp4 of the given file name. "
+          "Otherwise, render to screen.");
 
 namespace aistreams {
 
@@ -73,13 +79,22 @@ Status RunPlayback() {
   // Configure the visualization pipeline.
   gst_pipeline.push_back("decodebin");
   gst_pipeline.push_back("videoconvert");
-  gst_pipeline.push_back("autovideosink");
+
+  std::string output_mp4 = absl::GetFlag(FLAGS_output_mp4);
+  if (!output_mp4.empty()) {
+    gst_pipeline.push_back("x264enc");
+    gst_pipeline.push_back("mp4mux");
+    gst_pipeline.push_back(absl::StrFormat("filesink location=%s", output_mp4));
+  } else {
+    gst_pipeline.push_back("autovideosink");
+  }
 
   // Run the gstreamer pipeline.
+  int playback_duration_in_sec = absl::GetFlag(FLAGS_playback_duration_in_sec);
   auto gstlaunch_command = absl::StrJoin(gst_pipeline, " ! ");
   LOG(INFO) << absl::StrFormat("Running the gstreamer pipeline %s",
                                gstlaunch_command);
-  auto status = GstLaunchPipeline(gstlaunch_command);
+  auto status = GstLaunchPipeline(gstlaunch_command, playback_duration_in_sec);
   if (!status.ok()) {
     LOG(ERROR) << status;
     return UnknownError("Gstreamer launch did not complete successfully");
