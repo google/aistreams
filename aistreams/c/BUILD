@@ -12,6 +12,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":ais_gstreamer_buffer",
+        ":ais_logging",
         ":ais_packet",
         ":ais_packet_as",
         ":ais_status",
@@ -35,6 +36,18 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//aistreams/port:status",
+    ],
+)
+
+cc_library(
+    name = "ais_logging",
+    srcs = [
+        "ais_logging.cc",
+    ],
+    hdrs = ["ais_logging.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/port:logging",
     ],
 )
 

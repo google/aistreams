@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "aistreams/c/ais_gstreamer_buffer.h"
+#include "aistreams/c/ais_logging.h"
 #include "aistreams/c/ais_packet.h"
 #include "aistreams/c/ais_packet_as.h"
 #include "aistreams/c/ais_status.h"
