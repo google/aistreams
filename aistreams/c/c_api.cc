@@ -123,6 +123,7 @@ AIS_Receiver* AIS_NewReceiver(const AIS_ConnectionOptions* options,
   receiver_options.connection_options = options->connection_options;
   receiver_options.stream_name = ToString(stream_name);
   receiver_options.receiver_name = ToString(receiver_name);
+  // TODO: apply receiver offset options in C API.
 
   auto receiver_queue = std::make_unique<ReceiverQueue<Packet>>();
   auto status = MakePacketReceiverQueue(receiver_options, receiver_queue.get());

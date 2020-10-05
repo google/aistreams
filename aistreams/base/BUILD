@@ -50,6 +50,12 @@ cc_library(
 )
 
 cc_library(
+    name = "offset_options",
+    hdrs = ["offset_options.h"],
+    deps = [],
+)
+
+cc_library(
     name = "stream_channel",
     srcs = ["stream_channel.cc"],
     hdrs = ["stream_channel.h"],
@@ -73,6 +79,7 @@ cc_library(
     hdrs = ["packet_receiver.h"],
     deps = [
         ":connection_options",
+        ":offset_options",
         ":stream_channel",
         "//aistreams/port:grpc++",
         "//aistreams/port:logging",

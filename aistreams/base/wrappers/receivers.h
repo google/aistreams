@@ -20,6 +20,7 @@
 #include <functional>
 
 #include "aistreams/base/connection_options.h"
+#include "aistreams/base/offset_options.h"
 #include "aistreams/base/packet.h"
 #include "aistreams/base/wrappers/receiver_queue.h"
 #include "aistreams/port/status.h"
@@ -31,6 +32,9 @@ namespace aistreams {
 struct ReceiverOptions {
   // Options to connect to the the service.
   ConnectionOptions connection_options;
+
+  // Options to specify the offset to start receiving.
+  OffsetOptions offset_options;
 
   // The name of the stream to connect to.
   std::string stream_name;

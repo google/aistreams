@@ -18,6 +18,7 @@
 #define AISTREAMS_BASE_PACKET_RECEIVER_H_
 
 #include "aistreams/base/connection_options.h"
+#include "aistreams/base/offset_options.h"
 #include "aistreams/base/stream_channel.h"
 #include "aistreams/port/grpcpp.h"
 #include "aistreams/port/status.h"
@@ -40,6 +41,9 @@ class PacketReceiver {
   struct Options {
     // Options to configure the RPC connection.
     ConnectionOptions connection_options;
+
+    // Options to specify the offset to start receiving.
+    OffsetOptions offset_options;
 
     // The stream name to connect to.
     //
@@ -92,6 +96,9 @@ class PacketReceiver {
   std::unique_ptr<grpc::ClientContext> ctx_ = nullptr;
   ReceivePacketsRequest streaming_request_;
   std::unique_ptr<grpc::ClientReader<Packet>> streaming_reader_ = nullptr;
+
+  // Number of packets that have been received via the unary endpoint.
+  int unary_packets_received_ = 0;
 
   Status Initialize();
   Status StreamingReceive(Packet*);

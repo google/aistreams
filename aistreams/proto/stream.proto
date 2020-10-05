@@ -28,7 +28,7 @@ message OffsetConfig {
 
   // If this is set true, then the consumer will start consuming from the latest
   // packet in the stream and the value of position will be ignored.
-  bool latest = 2;
+  bool from_latest = 2;
 }
 
 // Response message for SendPackets.

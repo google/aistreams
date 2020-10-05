@@ -26,6 +26,7 @@ cc_library(
     ],
     deps = [
         "//aistreams/base:connection_options",
+        "//aistreams/base:offset_options",
         "//aistreams/base:packet",
         "//aistreams/base:packet_receiver",
         "//aistreams/base/types:basic_types",

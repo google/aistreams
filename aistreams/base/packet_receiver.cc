@@ -65,6 +65,14 @@ Status PacketReceiver::Initialize() {
   } else {
     streaming_request_.set_consumer_name(options_.receiver_name);
   }
+
+  if (options_.offset_options.reset_offset) {
+    streaming_request_.mutable_offset_config()->set_from_latest(
+        options_.offset_options.from_latest);
+    streaming_request_.mutable_offset_config()->set_position(
+        options_.offset_options.position);
+  }
+
   if (!options_.enable_unary_rpc) {
     auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
     if (!ctx_status_or.ok()) {
@@ -153,6 +161,15 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
   // Make the unary rpc.
   ReceiveOnePacketRequest request;
   request.set_blocking(true);
+  request.set_consumer_name(options_.receiver_name);
+  // Apply the offset options only for the first unary request.
+  if (unary_packets_received_ == 0 && options_.offset_options.reset_offset) {
+    request.mutable_offset_config()->set_from_latest(
+        options_.offset_options.from_latest);
+    request.mutable_offset_config()->set_position(
+        options_.offset_options.position);
+  }
+
   ReceiveOnePacketResponse response;
   grpc::Status grpc_status =
       stub_->ReceiveOnePacket(ctx_.get(), request, &response);
@@ -160,6 +177,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
     LOG(ERROR) << grpc_status.error_message();
     return UnknownError("Encountered error calling ReceiveOnePacket RPC");
   }
+  ++unary_packets_received_;
 
   // Extract the response.
   if (!response.valid()) {
