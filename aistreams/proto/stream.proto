@@ -20,6 +20,17 @@ import "google/protobuf/empty.proto";
 
 package aistreams;
 
+// Configuration used by consumers to reset its offset.
+message OffsetConfig {
+  // The offset position that the consumer wants to set to. The consumer can
+  // specify a position in the stream and start consuming from there.
+  int64 position = 1;
+
+  // If this is set true, then the consumer will start consuming from the latest
+  // packet in the stream and the value of position will be ignored.
+  bool latest = 2;
+}
+
 // Response message for SendPackets.
 message SendPacketsResponse {}
 
@@ -36,6 +47,12 @@ message ReceivePacketsRequest {
   // If the consumer name was duplicated, the
   // stream server will reject the request.
   string consumer_name = 1;
+
+  // The configuration for the consumer to reset its offset. If this field is
+  // not set, the existing consumers will resume its consumption from where it
+  // stopped previously; otherwise a new consumer it will consume from the
+  // latest packet in the stream.
+  OffsetConfig offset_config = 2;
 }
 
 // Request message for ReceiveOnePacket.
@@ -51,6 +68,12 @@ message ReceiveOnePacketRequest {
   //
   // By default blocking is false.
   bool blocking = 2;
+
+  // The configuration for the consumer to reset its offset. If this field is
+  // not set, the existing consumers will resume its consumption from where it
+  // stopped previously; otherwise a new consumer it will consume from the
+  // latest packet in the stream.
+  OffsetConfig offset_config = 3;
 }
 
 // Response message for ReceiveOnePacket.

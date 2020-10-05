@@ -20,6 +20,11 @@ import "google/protobuf/timestamp.proto";
 
 package aistreams;
 
+message ServerMetadata {
+  // The offset position for the packet in its stream.
+  int64 offset = 1;
+}
+
 // This stores all semantic and metadata related one Packet.
 message PacketHeader {
   // The timestamp at which the Packet was created.
@@ -42,6 +47,10 @@ message PacketHeader {
 
   // The tracing context of the packet, for purpose of distributed tracing.
   string trace_context = 4;
+
+  // Metadata that the server appends to each packet before sending it to
+  // receivers. You don't need to set value for this field when sending packets.
+  ServerMetadata server_metadata = 5;
 }
 
 // The quanta of datum that a stream accepts.
