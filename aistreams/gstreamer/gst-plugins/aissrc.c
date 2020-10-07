@@ -168,6 +168,14 @@ static void ais_src_init(AisSrc *src) {
 
   /* we operate in time */
   gst_base_src_set_format(GST_BASE_SRC(src), GST_FORMAT_TIME);
+
+  /**
+   * streams are live sources.
+   *
+   * TODO: could be useful to turn this into an option defaulting to TRUE.
+   */
+  gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
+  gst_base_src_set_do_timestamp(GST_BASE_SRC(src), TRUE);
 }
 
 /**
