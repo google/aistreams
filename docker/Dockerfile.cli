@@ -28,6 +28,11 @@ RUN cd /workspace_src && \
 
 FROM gcr.io/aistreams-public-images/aistreams-sdk-runtime
 
+# Workaround for click:
+# https://click.palletsprojects.com/en/7.x/python3/
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
+
 RUN mkdir -p /google
 COPY --from=build /workspace_src/*.whl /google
 RUN pip install /google/*.whl && rm -rf /google
