@@ -53,12 +53,12 @@ StreamChannel::MakeClientContext() const {
   if (options_.connection_options.authenticate_with_google) {
     auto token_statusor = GetIdTokenWithDefaultServiceAccount();
     if (!token_statusor.ok()) {
-      LOG(ERROR) << token_statusor.status();
-      return InternalError("Failed to get token.");
+      LOG(WARNING) << "failed to get ID token" << token_statusor.status();
+    } else {
+      ctx->AddMetadata(
+          "authorization",
+          absl::StrFormat("Bearer %s", std::move(token_statusor).ValueOrDie()));
     }
-    ctx->AddMetadata(
-        "authorization",
-        absl::StrFormat("Bearer %s", std::move(token_statusor).ValueOrDie()));
   }
 
   // Configure the RPC options.
