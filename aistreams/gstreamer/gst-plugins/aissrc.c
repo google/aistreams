@@ -163,7 +163,7 @@ static void ais_src_init(AisSrc *src) {
   src->receiver_name = g_strdup("");
   src->timeout_in_sec = -1;
   src->use_insecure_channel = FALSE;
-  src->ssl_domain_name = g_strdup("");
+  src->ssl_domain_name = g_strdup("aistreams.googleapis.com");
   src->ssl_root_cert_path = g_strdup("");
 
   /* we operate in time */
@@ -174,7 +174,7 @@ static void ais_src_init(AisSrc *src) {
    *
    * TODO: could be useful to turn this into an option defaulting to TRUE.
    */
-  gst_base_src_set_live (GST_BASE_SRC (src), TRUE);
+  gst_base_src_set_live(GST_BASE_SRC(src), TRUE);
   gst_base_src_set_do_timestamp(GST_BASE_SRC(src), TRUE);
 }
 
