@@ -41,20 +41,55 @@ std::string SetPluginParam(absl::string_view parameter_name,
 }
 
 bool HasProtocolPrefix(const std::string& source_uri) {
-  std::regex re("^.*://");
+  static std::regex re("^.*://");
   return std::regex_search(source_uri, re);
 }
 
+enum class InputSrcType {
+  kFileSrc,
+  kRtspSrc,
+  kGeneralSrc,
+};
+
+InputSrcType GetInputSrcType(const std::string& source_uri) {
+  static std::regex rtsp_re("^rtsp://");
+
+  // Assume that it is a local file if no protocol prefix is provided.
+  if (!HasProtocolPrefix(source_uri)) {
+    return InputSrcType::kFileSrc;
+  }
+
+  if (std::regex_search(source_uri, rtsp_re)) {
+    return InputSrcType::kRtspSrc;
+  }
+
+  return InputSrcType::kGeneralSrc;
+}
+
 // Decide the gstreamer plugin used to accept the input.
-//
-// The input source uri is assumed to be a file path if there is no uri prefix.
 std::string DecideInputPlugin(const std::string& source_uri) {
-  if (HasProtocolPrefix(source_uri)) {
-    return absl::StrFormat("urisourcebin %s",
-                           SetPluginParam("uri", source_uri));
-  } else {
-    return absl::StrFormat("filesrc %s",
-                           SetPluginParam("location", source_uri));
+  auto src_type = GetInputSrcType(source_uri);
+  switch (src_type) {
+    case InputSrcType::kFileSrc:
+      return absl::StrFormat("filesrc %s",
+                             SetPluginParam("location", source_uri));
+    case InputSrcType::kRtspSrc:
+      return absl::StrFormat("rtspsrc %s",
+                             SetPluginParam("location", source_uri));
+    default:
+      return absl::StrFormat("urisourcebin %s",
+                             SetPluginParam("uri", source_uri));
+  }
+}
+
+// Decide the gstreamer plugin used parse the input.
+std::string DecideParserPlugin(const std::string& source_uri) {
+  auto src_type = GetInputSrcType(source_uri);
+  switch (src_type) {
+    case InputSrcType::kRtspSrc:
+      return "rtph264depay ! h264parse";
+    default:
+      return "parsebin";
   }
 }
 
@@ -93,10 +128,11 @@ std::string DecideResizePlugin(const IngesterOptions& options) {
   return videoscale_config;
 }
 
-// Decide which gstreamer plugin to transcode into before it is sent.
+// If a transcode was required, decides the plugin/codec to encode into
+// before sending.
 //
-// Returns an empty string if no transcoding is necessary.
-std::string DecideCodecPlugins(const IngesterOptions& options) {
+// Returns an empty string if no transcoding was necessary.
+std::string DecideEncoderPlugins(const IngesterOptions& options) {
   if (!IsTranscodeRequired(options)) {
     return "";
   }
@@ -123,32 +159,28 @@ StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
                                               const std::string& source_uri) {
   std::vector<std::string> gst_pipeline;
 
-  // This is the plugin that accepts the source uri into the pipeline.
-  //
-  // It normalizes all streaming protocols, video container formats, and outputs
-  // buffer types that are suitable to be passed for codec
-  // determination/processing.
+  // Decide the plugin that accepts the source uri into the pipeline.
   std::string source_plugin = DecideInputPlugin(source_uri);
   gst_pipeline.push_back(source_plugin);
 
-  // If a transcode is not required, then directly pass the natively encoded
-  // buffers into aissink. Otherwise, decode, resize, and re-encoding into the
-  // final sending format.
-  if (!IsTranscodeRequired(options)) {
-    gst_pipeline.push_back("parsebin");
-  } else {
+  // Decide the plugin that parses the inputs suitable for decoding.
+  std::string parser_plugin = DecideParserPlugin(source_uri);
+  gst_pipeline.push_back(parser_plugin);
+
+  // If a transcode is required, decode, resize, and re-encode.
+  if (IsTranscodeRequired(options)) {
     gst_pipeline.push_back("decodebin");
     auto resize_plugin = DecideResizePlugin(options);
     if (!resize_plugin.empty()) {
       gst_pipeline.push_back(resize_plugin);
     }
-    auto codec_plugin = DecideCodecPlugins(options);
-    if (!codec_plugin.empty()) {
-      gst_pipeline.push_back(codec_plugin);
+    auto encoder_plugin = DecideEncoderPlugins(options);
+    if (!encoder_plugin.empty()) {
+      gst_pipeline.push_back(encoder_plugin);
     }
   }
 
-  // Configure aissink.
+  // Configure aissink for sending.
   AissinkCliBuilder aissink_cli_builder;
   auto aissink_plugin_statusor =
       aissink_cli_builder
