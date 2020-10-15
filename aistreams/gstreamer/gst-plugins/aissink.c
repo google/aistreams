@@ -146,7 +146,7 @@ static void ais_sink_init(AisSink *sink) {
   sink->stream_name = g_strdup("");
   sink->authenticate_with_google = FALSE;
   sink->use_insecure_channel = FALSE;
-  sink->ssl_domain_name = g_strdup("");
+  sink->ssl_domain_name = g_strdup("aistreams.googleapis.com");
   sink->ssl_root_cert_path = g_strdup("");
 }
 
