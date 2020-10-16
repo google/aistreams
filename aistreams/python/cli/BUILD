@@ -13,6 +13,7 @@ py_binary(
         "//aistreams/python/cli/managed:cli",
         "//aistreams/python/cli/onprem:cli",
         "//aistreams/python/cli/playback:cli",
+        "//aistreams/python/cli/printer:cli",
     ],
 )
 

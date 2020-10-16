@@ -23,6 +23,7 @@ import aistreams.python.cli.ingest.commands as ingest
 import aistreams.python.cli.managed.commands as managed
 import aistreams.python.cli.onprem.commands as onprem
 import aistreams.python.cli.playback.commands as playback
+import aistreams.python.cli.printer.commands as printer
 import click
 
 _LOGGING_FORMAT = "%(levelname)s: %(message)s"
@@ -52,6 +53,7 @@ main.add_command(ingest.cli)
 main.add_command(managed.cli)
 main.add_command(onprem.cli)
 main.add_command(playback.cli)
+main.add_command(printer.cli)
 
 if __name__ == "__main__":
   # pylint: disable=no-value-for-parameter
