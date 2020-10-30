@@ -56,6 +56,11 @@ class AissinkCliBuilder {
     return *this;
   }
 
+  AissinkCliBuilder& SetTraceProbability(double trace_probability) {
+    trace_probability_ = trace_probability;
+    return *this;
+  }
+
   // On success, returns the gstreamer commandline configuration string.
   StatusOr<std::string> Finalize() const;
 
@@ -69,6 +74,8 @@ class AissinkCliBuilder {
   bool use_insecure_channel_;
   std::string ssl_domain_name_;
   std::string ssl_root_cert_path_;
+
+  double trace_probability_ = 0;
 };
 
 }  // namespace aistreams

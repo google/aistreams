@@ -45,8 +45,7 @@ std::shared_ptr<::opencensus::trace::ProbabilitySampler> GetProbabilitySampler(
 }
 }  // namespace
 
-void InstrumentPacketHeader(::aistreams::PacketHeader* packet_header,
-                            double probability) {
+void Instrument(::aistreams::PacketHeader* packet_header, double probability) {
   if (probability < 0 || probability > 1) {
     LOG(ERROR) << "invalid probability: " << probability;
     return;

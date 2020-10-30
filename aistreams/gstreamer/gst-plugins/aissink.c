@@ -65,6 +65,7 @@ enum {
   PROP_USE_INSECURE_CHANNEL,
   PROP_SSL_DOMAIN_NAME,
   PROP_SSL_ROOT_CERT_PATH,
+  PROP_TRACE_PROBABILITY,
 };
 
 /* pad templates */
@@ -123,6 +124,12 @@ static void ais_sink_class_init(AisSinkClass *klass) {
                           "The file path to the root CA certificate", NULL,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property(
+      gobject_class, PROP_TRACE_PROBABILITY,
+      g_param_spec_double("trace-probability", "Trace probability",
+                          "Probability to start trace for a packet", 0, 1, 0,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_set_static_metadata(
       GST_ELEMENT_CLASS(klass), "AI Streams sink", "Generic",
       "Send packets to AI Streams", "Google Inc");
@@ -148,6 +155,7 @@ static void ais_sink_init(AisSink *sink) {
   sink->use_insecure_channel = FALSE;
   sink->ssl_domain_name = g_strdup("aistreams.googleapis.com");
   sink->ssl_root_cert_path = g_strdup("");
+  sink->trace_probability = 0;
 }
 
 /**
@@ -302,6 +310,9 @@ static void ais_sink_set_property(GObject *object, guint property_id,
     case PROP_SSL_ROOT_CERT_PATH:
       ais_sink_set_ssl_root_cert_path(sink, g_value_get_string(value), NULL);
       break;
+    case PROP_TRACE_PROBABILITY:
+      sink->trace_probability = g_value_get_double(value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
       break;
@@ -330,6 +341,9 @@ static void ais_sink_get_property(GObject *object, guint property_id,
       break;
     case PROP_SSL_ROOT_CERT_PATH:
       g_value_set_string(value, sink->ssl_root_cert_path);
+      break;
+    case PROP_TRACE_PROBABILITY:
+      g_value_set_double(value, sink->trace_probability);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -380,8 +394,9 @@ static gboolean ais_sink_start(GstBaseSink *bsink) {
                          sink->ais_connection_options);
 
   sink->ais_status = AIS_NewStatus();
-  sink->ais_sender = AIS_NewSender(sink->ais_connection_options,
-                                   sink->stream_name, sink->ais_status);
+  sink->ais_sender =
+      AIS_NewSender(sink->ais_connection_options, sink->stream_name,
+                    sink->trace_probability, sink->ais_status);
   if (sink->ais_sender == NULL) {
     goto failed_new_sender;
   }

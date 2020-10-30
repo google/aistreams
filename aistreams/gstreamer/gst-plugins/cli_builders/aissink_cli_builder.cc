@@ -31,6 +31,8 @@ namespace {
 
 std::string ToString(bool b) { return b ? "true" : "false"; }
 
+std::string ToString(double val) { return std::to_string(val); }
+
 std::string SetPluginParam(absl::string_view parameter_name,
                            absl::string_view value) {
   if (value.empty()) {
@@ -56,6 +58,9 @@ Status AissinkCliBuilder::ValidateSettings() const {
       return InvalidArgumentError("Given an empty path to the ssl root cert");
     }
   }
+  if (trace_probability_ < 0 || trace_probability_ > 1) {
+    return InvalidArgumentError("Given an invalid trace probability.");
+  }
   return OkStatus();
 }
 
@@ -71,6 +76,8 @@ StatusOr<std::string> AissinkCliBuilder::Finalize() const {
       SetPluginParam("use-insecure-channel", ToString(use_insecure_channel_)));
   tokens.push_back(SetPluginParam("ssl-domain-name", ssl_domain_name_));
   tokens.push_back(SetPluginParam("ssl-root-cert-path", ssl_root_cert_path_));
+  tokens.push_back(
+      SetPluginParam("trace-probability", ToString(trace_probability_)));
   return absl::StrJoin(tokens, " ");
 }
 

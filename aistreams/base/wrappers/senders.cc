@@ -19,14 +19,9 @@
 #include <functional>
 #include <thread>
 
-#include "absl/strings/str_format.h"
-#include "absl/time/time.h"
-#include "aistreams/base/connection_options.h"
 #include "aistreams/base/packet_sender.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
-#include "aistreams/port/status_macros.h"
-#include "aistreams/port/statusor.h"
 
 namespace aistreams {
 
@@ -36,6 +31,7 @@ Status MakePacketSender(const SenderOptions& options,
   PacketSender::Options packet_sender_options;
   packet_sender_options.connection_options = options.connection_options;
   packet_sender_options.stream_name = options.stream_name;
+  packet_sender_options.trace_probability = options.trace_probability;
   auto packet_sender_statusor = PacketSender::Create(packet_sender_options);
   if (!packet_sender_statusor.ok()) {
     LOG(ERROR) << packet_sender_statusor.status();

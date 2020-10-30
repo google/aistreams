@@ -49,6 +49,7 @@ struct _AisSink {
   gboolean use_insecure_channel;
   gchar *ssl_domain_name;
   gchar *ssl_root_cert_path;
+  gdouble trace_probability;
 
   /* An AI Streamer sender object. */
   AIS_Sender *ais_sender;

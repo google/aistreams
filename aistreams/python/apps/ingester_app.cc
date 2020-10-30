@@ -37,6 +37,8 @@ ABSL_FLAG(std::string, ssl_root_cert_path, "",
           "The path to the ssl root certificate.");
 ABSL_FLAG(bool, loop, false,
           "Whether to loop/repeat the source when it reaches the end.");
+ABSL_FLAG(double, trace_probability, 0,
+          "The probability to start trace for each packet.");
 
 namespace aistreams {
 
@@ -55,6 +57,7 @@ void RunIngester() {
       absl::GetFlag(FLAGS_ssl_root_cert_path);
   options.target_stream_name = absl::GetFlag(FLAGS_stream_name);
   std::string source_uri = absl::GetFlag(FLAGS_source_uri);
+  options.trace_probability = absl::GetFlag(FLAGS_trace_probability);
   bool loop = absl::GetFlag(FLAGS_loop);
 
   // Run the ingester.

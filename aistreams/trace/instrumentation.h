@@ -26,7 +26,7 @@ namespace trace {
 
 // Instrument a packet header by setting its trace context with the given
 // `probability`. The `probability` will be rounded to 4 decimal places.
-void InstrumentPacketHeader(PacketHeader* packet_header, double probability);
+void Instrument(PacketHeader* packet_header, double probability);
 
 }  // namespace trace
 }  // namespace aistreams

@@ -34,6 +34,9 @@ struct SenderOptions {
 
   // The name of the stream to connect to.
   std::string stream_name;
+
+  // The probability to start a trace for each packet sent.
+  double trace_probability = 0;
 };
 
 // Create a packet sender.

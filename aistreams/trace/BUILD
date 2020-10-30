@@ -1,7 +1,7 @@
 package(default_visibility = ["//aistreams:__subpackages__"])
 
 cc_library(
-    name = "trace_lib",
+    name = "instrumentation",
     srcs = [
         "instrumentation.cc",
     ],
@@ -20,10 +20,10 @@ cc_library(
 )
 
 cc_test(
-    name = "trace_lib_test",
+    name = "instrumentation_test",
     srcs = ["instrumentation_test.cc"],
     deps = [
-        ":trace_lib",
+        ":instrumentation",
         "//aistreams/port:gtest_main",
     ],
 )

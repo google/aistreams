@@ -189,6 +189,7 @@ StatusOr<std::string> DecideGstLaunchPipeline(const IngesterOptions& options,
               options.connection_options.authenticate_with_google)
           .SetStreamName(options.target_stream_name)
           .SetSslOptions(options.connection_options.ssl_options)
+          .SetTraceProbability(options.trace_probability)
           .Finalize();
   if (!aissink_plugin_statusor.ok()) {
     LOG(ERROR) << aissink_plugin_statusor.status();

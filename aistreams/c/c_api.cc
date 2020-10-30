@@ -87,10 +87,12 @@ void AIS_SetSslRootCertPath(const char* ssl_root_cert_path,
 // --------------------------------------------------------------------------
 
 AIS_Sender* AIS_NewSender(const AIS_ConnectionOptions* options,
-                          const char* stream_name, AIS_Status* ais_status) {
+                          const char* stream_name, double trace_probability,
+                          AIS_Status* ais_status) {
   SenderOptions sender_options;
   sender_options.connection_options = options->connection_options;
   sender_options.stream_name = ToString(stream_name);
+  sender_options.trace_probability = trace_probability;
 
   std::unique_ptr<PacketSender> sender;
   auto status = MakePacketSender(sender_options, &sender);

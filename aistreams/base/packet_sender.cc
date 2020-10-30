@@ -19,6 +19,7 @@
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
+#include "aistreams/trace/instrumentation.h"
 
 namespace aistreams {
 
@@ -93,6 +94,8 @@ Status PacketSender::StreamingSend(const Packet& packet) {
 }
 
 Status PacketSender::Send(const Packet& packet) {
+  ::aistreams::trace::Instrument(const_cast<Packet&>(packet).mutable_header(),
+                                 options_.trace_probability);
   if (streaming_writer_ == nullptr) {
     return UnarySend(packet);
   } else {

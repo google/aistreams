@@ -60,6 +60,9 @@ struct IngesterOptions {
   // Leaving both non-positive will bypass resizing altogether.
   int resize_height = 0;
   int resize_width = 0;
+
+  // Options to instrument packet header.
+  double trace_probability = 0;
 };
 
 // Ingest the stream specified in `source_uri`, and send the data to an AI

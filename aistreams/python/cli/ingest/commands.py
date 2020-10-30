@@ -39,9 +39,10 @@ _INGESTION_APP_NAME = "ingester_app"
 @click.option("--stream-name", "-s", required=True, type=str)
 @click.option("--source-uri", "-i", required=True, type=str)
 @click.option("--loop", "-l", is_flag=True)
+@click.option("--trace-probability", type=float, default=0)
 def cli(target_address, ssl_root_cert_path, ssl_domain_name,
         authenticate_with_google, use_insecure_channel, stream_name, source_uri,
-        loop):
+        loop, trace_probability):
   """Ingest a video source into a stream."""
   ingester_app_config = {
       "app_path":
@@ -63,6 +64,7 @@ def cli(target_address, ssl_root_cert_path, ssl_domain_name,
           util.normalize_string_for_commandline(source_uri),
       "use_insecure_channel":
           util.to_cpp_bool_string(use_insecure_channel),
+      "trace_probability": trace_probability,
   }
 
   ingester_app_cmd = ("{app_path} "
@@ -73,6 +75,7 @@ def cli(target_address, ssl_root_cert_path, ssl_domain_name,
                       "--stream_name={stream_name} "
                       "--loop={loop} "
                       "--source_uri={source_uri} "
+                      "--trace_probability={trace_probability} "
                       "--use_insecure_channel={use_insecure_channel} ".format(
                           **ingester_app_config))
   logging.debug("Executing command %s.", ingester_app_cmd)

@@ -47,6 +47,11 @@ class PacketSender {
     // This is mainly useful for approximate profiling/packet tracing with
     // istio. It is not particularly efficient.
     bool enable_unary_rpc = false;
+
+    // The probability to start a trace for each packet sent. If
+    // `trace_probability` is set with a positive value, then packet sender
+    // might update value for `trace_context` in the packet header.
+    double trace_probability = 0;
   };
 
   // Creates and initializes an instance that is ready for use.

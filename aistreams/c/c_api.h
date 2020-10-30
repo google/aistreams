@@ -99,6 +99,7 @@ typedef struct AIS_Sender AIS_Sender;
 // server specified in options and fully initialized for use.
 extern AIS_Sender* AIS_NewSender(const AIS_ConnectionOptions* options,
                                  const char* stream_name,
+                                 double trace_probability,
                                  AIS_Status* ais_status);
 
 // Delete a packet sender object.

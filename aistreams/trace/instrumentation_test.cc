@@ -29,19 +29,19 @@ using ::opencensus::trace::Span;
 using ::opencensus::trace::SpanContext;
 using ::opencensus::trace::propagation::FromTraceParentHeader;
 
-TEST(Trace, InstrumentPacketHeader) {
+TEST(Trace, Instrument) {
   PacketHeader packet_header;
   EXPECT_TRUE(packet_header.trace_context().empty());
-  InstrumentPacketHeader(&packet_header, 2);
+  Instrument(&packet_header, 2);
   EXPECT_TRUE(packet_header.trace_context().empty());
-  InstrumentPacketHeader(&packet_header, -1);
+  Instrument(&packet_header, -1);
   EXPECT_TRUE(packet_header.trace_context().empty());
-  InstrumentPacketHeader(&packet_header, 1);
+  Instrument(&packet_header, 1);
   EXPECT_FALSE(packet_header.trace_context().empty());
   SpanContext span_context =
       FromTraceParentHeader(packet_header.trace_context());
   EXPECT_TRUE(span_context.trace_options().IsSampled());
-  InstrumentPacketHeader(&packet_header, 0);
+  Instrument(&packet_header, 0);
   span_context = FromTraceParentHeader(packet_header.trace_context());
   EXPECT_FALSE(span_context.trace_options().IsSampled());
 }
