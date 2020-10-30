@@ -99,3 +99,38 @@ def aistreams_sdk_deps():
         urls = ["https://github.com/pybind/pybind11_bazel/archive/26973c0ff320cb4b39e45bc3e4297b82bc3a6c09.zip"],
         sha256 = "a5666d950c3344a8b0d3892a88dc6b55c8e0c78764f9294e806d69213c03f19d",
     )
+
+    maybe(
+        http_archive,
+        name = "com_census_instrumentation_cpp",
+        strip_prefix = "opencensus-cpp-7268fc9e2722245cb20322866a93c6fb6c5c5c80",
+        urls = [
+            "https://github.com/census-instrumentation/opencensus-cpp/archive/7268fc9e2722245cb20322866a93c6fb6c5c5c80.zip",
+        ],
+        sha256 = "601a8987d443448f7389e3cb2e998eca32ecbc3d1d3e8c3d19b71d4d1da83af7",
+        repo_mapping = {
+            "@com_github_curl" : "@curl",
+        }
+    )
+
+    maybe(
+        http_archive,
+        name = "curl",
+        build_file = "@com_census_instrumentation_cpp//:bazel/curl.BUILD",
+        strip_prefix = "curl-7.73.0",
+        urls = [
+            "https://github.com/curl/curl/releases/download/curl-7_73_0/curl-7.73.0.zip",
+        ],
+        sha256 = "70918e1678d4fb5fd18c44e8a54d263d74a4bede7c38723e72317b7e74a2a27d",
+    )
+
+    maybe(
+        http_archive,
+        name = "com_github_tencent_rapidjson",
+        build_file = "@com_census_instrumentation_cpp//:bazel/rapidjson.BUILD",
+        strip_prefix = "rapidjson-b7734d97c0c011632367f5e3510916828da1346c",
+        urls = [
+            "https://github.com/Tencent/rapidjson/archive/b7734d97c0c011632367f5e3510916828da1346c.zip",
+        ],
+        sha256 = "44ba38febb4a433e19e1fd139a4b12e3b3d4da0c4d31f0f7d7ca9221dac276ef",
+    )
