@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#undef RAPIDJSON_HAS_STDSTRING
+#define RAPIDJSON_HAS_STDSTRING 1
+
 #include "aistreams/base/util/auth_helpers.h"
 
 #include "absl/strings/str_format.h"
