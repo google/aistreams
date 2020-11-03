@@ -25,6 +25,7 @@
 #include "google/iam/credentials/v1/common.pb.h"
 #include "google/iam/credentials/v1/iamcredentials.grpc.pb.h"
 #include "google/iam/credentials/v1/iamcredentials.pb.h"
+#include "rapidjson/document.h"
 
 namespace aistreams {
 namespace {
@@ -37,6 +38,7 @@ constexpr char kAudiance[] = "https://aistreams.googleapis.com/";
 constexpr char kResourceNameFormat[] = "projects/-/serviceAccounts/%s";
 constexpr char kGoogleApplicationCredentials[] =
     "GOOGLE_APPLICATION_CREDENTIALS";
+constexpr char kClientEmailKey[] = "client_email";
 
 }  // namespace
 
@@ -80,33 +82,13 @@ StatusOr<std::string> GetIdTokenWithDefaultServiceAccount() {
         absl::StrFormat("Failed to get contents from file %s", cred_path));
   }
 
-  // Partially parse the json key file.
-  absl::string_view content(file_contents);
-  auto start_pos = content.find("client_email");
-  if (start_pos == absl::string_view::npos) {
+  rapidjson::Document doc;
+  doc.Parse(file_contents);
+  if (!doc.HasMember(kClientEmailKey)) {
     return InternalError("Failed to find client_email from the file.");
   }
-  start_pos = content.find_first_of(':', start_pos);
-  if (start_pos == absl::string_view::npos) {
-    return InternalError(
-        absl::StrFormat("Failed to find colon(:) after position %d, the format "
-                        "of json file is invalid.",
-                        start_pos));
-  }
 
-  auto end_pos = content.find_first_of(',', start_pos);
-  if (end_pos == absl::string_view::npos) {
-    return InternalError(
-        absl::StrFormat("Failed to find comma(,) after position %d, the format "
-                        "of json is invalid.",
-                        start_pos));
-  }
-  absl::string_view client_email =
-      content.substr(start_pos + 1, end_pos - start_pos - 1);
-  client_email = absl::StripAsciiWhitespace(client_email);
-  client_email = absl::StripPrefix(client_email, "\"");
-  client_email = absl::StripSuffix(client_email, "\"");
-  return GetIdToken(std::string{client_email});
+  return GetIdToken(doc[kClientEmailKey].GetString());
 }
 
 }  // namespace aistreams

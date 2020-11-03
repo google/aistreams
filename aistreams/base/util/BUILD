@@ -84,8 +84,9 @@ cc_library(
     hdrs = ["auth_helpers.h"],
     deps = [
         ":grpc_helpers",
-        "@com_google_googleapis//google/iam/credentials/v1:credentials_cc_grpc",
+        "@com_github_tencent_rapidjson//:rapidjson",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_googleapis//google/iam/credentials/v1:credentials_cc_grpc",
     ],
 )
 

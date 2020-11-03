@@ -109,8 +109,8 @@ def aistreams_sdk_deps():
         ],
         sha256 = "601a8987d443448f7389e3cb2e998eca32ecbc3d1d3e8c3d19b71d4d1da83af7",
         repo_mapping = {
-            "@com_github_curl" : "@curl",
-        }
+            "@com_github_curl": "@curl",
+        },
     )
 
     maybe(
