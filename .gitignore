@@ -7,3 +7,4 @@ bazel-aistreams-sdk
 ddcterm
 .clwb
 .vscode
+.clang-format

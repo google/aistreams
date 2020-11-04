@@ -98,11 +98,18 @@ def cli(ctx, target_address, ssl_root_cert_path, ssl_domain_name,
 @cli.command()
 @click.option(
     "--stream-name", "-s", type=str, required=True, help="Stream name.")
+@click.option(
+    "--stream-retention-seconds",
+    "-r",
+    type=int,
+    default=86400,
+    help="Stream retention period.")
 @click.pass_context
-def create(ctx, stream_name):
+def create(ctx, stream_name, stream_retention_seconds):
   """Create a stream."""
   args = dict(ctx.obj)
   args["stream_name"] = stream_name
+  args["stream_retention_seconds"] = stream_retention_seconds
   _exec_manager_app(0, args)
 
 

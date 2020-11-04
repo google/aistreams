@@ -117,6 +117,7 @@ class OnPremStreamManagerImpl : public StreamManager {
     CreateStreamRequest request;
     CreateStreamResponse response;
     request.set_stream_name(stream.name());
+    *request.mutable_retention_period() = stream.retention_period();
 
     grpc::Status grpc_status =
         stub_->CreateStream(&context, request, &response);
@@ -216,6 +217,8 @@ class ManagedStreamManagerImpl : public StreamManager {
     grpc::ClientContext context;
     ::google::partner::aistreams::v1alpha1::CreateStreamRequest request;
     ::google::longrunning::Operation operation;
+    // TODO: add retention period to the `CreateStream` protobuf definition and
+    // set its value here.
     request.set_parent(parent_);
     request.set_stream_id(stream.name());
     // Needs to add metadata. GFE needs the metadata for routing request.

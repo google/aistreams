@@ -66,6 +66,8 @@ ABSL_FLAG(std::string, location, "us-central1",
           "The location of the management server.");
 ABSL_FLAG(std::string, cluster_name, "",
           "The cluster hosting the management server.");
+ABSL_FLAG(int, stream_retention_seconds, 86400,
+          "The retention period for the stream.");
 
 namespace aistreams {
 
@@ -126,8 +128,11 @@ void CreateStream() {
     LOG(ERROR) << "Stream name cannot be empty.";
     return;
   }
+  const auto stream_retention_seconds =
+      absl::GetFlag(FLAGS_stream_retention_seconds);
 
   stream.set_name(stream_name);
+  stream.mutable_retention_period()->set_seconds(stream_retention_seconds);
   auto stream_statusor = manager->CreateStream(stream);
   if (!stream_statusor.ok()) {
     LOG(ERROR) << "Failed to call CreateStream(). " << stream_statusor.status();
