@@ -25,8 +25,13 @@
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
 #include "aistreams/proto/packet.pb.h"
+#include "google/protobuf/struct.pb.h"
 
 namespace aistreams {
+
+namespace {
+constexpr char kTestString[] = "hello!";
+}
 
 TEST(PacketUtilsTest, IsEosTest) {
   {
@@ -51,6 +56,59 @@ TEST(PacketUtilsTest, IsEosTest) {
     auto packet = std::move(packet_status_or).ValueOrDie();
     EXPECT_FALSE(IsControlSignal(packet));
     EXPECT_FALSE(IsEos(packet));
+  }
+}
+
+TEST(PacketUtilsTest, AddendumTest) {
+  {
+    Packet p;
+
+    // Insert string addenda.
+    auto status = InsertStringAddendum("string-addendum", kTestString, &p);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 1);
+    std::string out_string;
+    status = GetStringAddendum(p, "string-addendum", &out_string);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(out_string, kTestString);
+    status =
+        InsertStringAddendum("string-addendum", "this should not work", &p);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 1);
+    status = GetStringAddendum(p, "string-addendum", &out_string);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(out_string, kTestString);
+
+    // Insert protobuf addenda.
+    auto packet_status_or = MakeEosPacket(kTestString);
+    ASSERT_TRUE(packet_status_or.ok());
+    auto proto_addendum = std::move(packet_status_or).ValueOrDie();
+
+    status = InsertProtoAddendum("proto-addendum", proto_addendum, &p);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 2);
+
+    Packet out_proto_addendum;
+    status = GetProtoAddendum(p, "proto-addendum", &out_proto_addendum);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(proto_addendum.DebugString(), out_proto_addendum.DebugString());
+
+    // Attempt to read with the wrong protobuf type.
+    google::protobuf::Value out_val;
+    status = GetProtoAddendum(p, "proto-addendum", &out_val);
+    EXPECT_FALSE(status.ok());
+    LOG(INFO) << status;
+
+    // Delete addenda.
+    status = DeleteAddendum("bogus", &p);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 2);
+    status = DeleteAddendum("string-addendum", &p);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 1);
+    status = DeleteAddendum("proto-addendum", &p);
+    EXPECT_TRUE(status.ok());
+    EXPECT_EQ(p.header().addenda().size(), 0);
   }
 }
 

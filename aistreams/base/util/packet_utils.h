@@ -19,12 +19,18 @@
 
 #include <vector>
 
+#include "absl/strings/str_format.h"
+#include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
 #include "aistreams/proto/packet.pb.h"
 #include "aistreams/proto/types/control_signal.pb.h"
+#include "google/protobuf/message.h"
 
 namespace aistreams {
+
+// ------------------------------------------------------------------
+// Packet type utilities.
 
 // Get the PacketTypeId.
 PacketTypeId GetPacketTypeId(const Packet&);
@@ -38,6 +44,9 @@ bool IsControlSignal(const Packet&);
 // signal). In these cases, the status will tell the reason.
 StatusOr<ControlSignalTypeId> GetControlSignalTypeId(const Packet& p);
 
+// ------------------------------------------------------------------
+// EOS utilities.
+
 // Check if the given Packet is an EOS control signal packet.
 bool IsEos(const Packet&);
 
@@ -47,6 +56,28 @@ bool IsEos(const Packet&);
 // `reason` is not nullptr, it will set its pointee to indicate why the Eos was
 // sent.
 bool IsEos(const Packet&, std::string* reason);
+
+// ------------------------------------------------------------------
+// Packet addenda ("metadata") utilities.
+
+// Inserts a string addendum with key `key` and value `value` into packet `p`.
+Status InsertStringAddendum(const std::string& key, const std::string& value,
+                            Packet* p);
+
+// Inserts a protobuf addendum with key `key` and value `value` into packet `p`.
+Status InsertProtoAddendum(const std::string& key,
+                           const google::protobuf::Message& value, Packet* p);
+
+// Deletes an addendum with key `key`.
+Status DeleteAddendum(const std::string& key, Packet*);
+
+// Get a copy of the string value from a string addendum with key `key`.
+Status GetStringAddendum(const Packet& p, const std::string& key,
+                         std::string* s);
+
+// Get a copy of the protobuf value from a protobuf addendum with key `key`.
+Status GetProtoAddendum(const Packet& p, const std::string& key,
+                        google::protobuf::Message* m);
 
 }  // namespace aistreams
 
