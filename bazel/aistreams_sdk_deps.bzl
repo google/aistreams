@@ -19,11 +19,11 @@ def aistreams_sdk_deps():
     maybe(
         http_archive,
         name = "com_google_absl",
-        strip_prefix = "abseil-cpp-20190808",
+        strip_prefix = "abseil-cpp-20200923.2",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/20190808.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/20200923.2.tar.gz",
         ],
-        sha256 = "8100085dada279bf3ee00cd064d43b5f55e5d913be0dfe2906f06f8f28d5b37e",
+        sha256 = "bf3f13b13a0095d926b25640e060f7e13881bd8a792705dd9e161f3c2b9aa976",
     )
 
     maybe(
