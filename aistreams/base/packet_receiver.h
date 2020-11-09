@@ -17,6 +17,7 @@
 #ifndef AISTREAMS_BASE_PACKET_RECEIVER_H_
 #define AISTREAMS_BASE_PACKET_RECEIVER_H_
 
+#include "absl/time/time.h"
 #include "aistreams/base/connection_options.h"
 #include "aistreams/base/offset_options.h"
 #include "aistreams/base/stream_channel.h"
@@ -62,8 +63,14 @@ class PacketReceiver {
     // istio. It is not particularly efficient.
     bool enable_unary_rpc = false;
 
-    // The interval (ms) between unary rpc polls.
-    int unary_rpc_poll_interval_ms = 0;
+    // The interval between unary rpc polls.
+    absl::Duration unary_rpc_poll_interval = absl::ZeroDuration();
+
+    // The timeout to receive a packet. This configuration is primarily used for
+    // the `Receive` method; if there isn't an available packet for a duration
+    // longer than the `timeout`, then the `Receive` method call will be
+    // terminated.
+    absl::Duration timeout = absl::InfiniteDuration();
   };
 
   // Creates and initializes an instance that is ready for use.

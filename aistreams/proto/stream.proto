@@ -15,8 +15,7 @@
 syntax = "proto3";
 
 import "aistreams/proto/packet.proto";
-import "google/protobuf/any.proto";
-import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
 
 package aistreams;
 
@@ -53,6 +52,12 @@ message ReceivePacketsRequest {
   // stopped previously; otherwise a new consumer it will consume from the
   // latest packet in the stream.
   OffsetConfig offset_config = 2;
+
+  // If this value is specified, the stream server will stop the streaming gRPC
+  // connection if no new packet is available for a duration longer than the
+  // `timeout` here. Otherwise, the stream server will block until a packet is
+  // available.
+  google.protobuf.Duration timeout = 3;
 }
 
 // Request message for ReceiveOnePacket.

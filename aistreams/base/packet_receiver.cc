@@ -46,6 +46,12 @@ Status PacketReceiver::Initialize() {
   StreamChannel::Options stream_channel_options;
   stream_channel_options.connection_options = options_.connection_options;
   stream_channel_options.stream_name = options_.stream_name;
+  // Set the timeout in connection options for unary-styled packet receiving.
+  if (options_.enable_unary_rpc && options_.timeout > absl::ZeroDuration() &&
+      options_.timeout < absl::InfiniteDuration()) {
+    stream_channel_options.connection_options.rpc_options.timeout =
+        options_.timeout;
+  }
   auto stream_channel_status_or = StreamChannel::Create(stream_channel_options);
   if (!stream_channel_status_or.ok()) {
     LOG(ERROR) << stream_channel_status_or.status();
@@ -71,6 +77,15 @@ Status PacketReceiver::Initialize() {
         options_.offset_options.from_latest);
     streaming_request_.mutable_offset_config()->set_position(
         options_.offset_options.position);
+  }
+
+  if (options_.timeout > absl::ZeroDuration() &&
+      options_.timeout < absl::InfiniteDuration()) {
+    absl::Duration timeout = options_.timeout;
+    streaming_request_.mutable_timeout()->set_seconds(
+        absl::IDivDuration(timeout, absl::Seconds(1), &timeout));
+    streaming_request_.mutable_timeout()->set_nanos(
+        absl::IDivDuration(timeout, absl::Nanoseconds(1), &timeout));
   }
 
   if (!options_.enable_unary_rpc) {
@@ -118,8 +133,8 @@ Status PacketReceiver::UnarySubscribe(const PacketCallback& callback) {
       }
     }
 
-    if (options_.unary_rpc_poll_interval_ms > 0) {
-      absl::SleepFor(absl::Milliseconds(options_.unary_rpc_poll_interval_ms));
+    if (options_.unary_rpc_poll_interval > absl::ZeroDuration()) {
+      absl::SleepFor(options_.unary_rpc_poll_interval);
     }
   }
   return OkStatus();

@@ -49,8 +49,7 @@ proto_library(
     srcs = ["stream.proto"],
     deps = [
         ":packet_proto",
-        "@com_google_protobuf//:any_proto",
-        "@com_google_protobuf//:empty_proto",
+        "@com_google_protobuf//:duration_proto",
     ],
 )
 
