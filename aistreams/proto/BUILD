@@ -50,6 +50,7 @@ proto_library(
     deps = [
         ":packet_proto",
         "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:timestamp_proto",
     ],
 )
 
