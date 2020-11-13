@@ -23,6 +23,12 @@ package aistreams;
 message ServerMetadata {
   // The offset position for the packet in its stream.
   int64 offset = 1;
+
+  // The timestamp at which the stream server receives this packet. This is
+  // based on the local clock of on the server side. It is guaranteed to be
+  // monotonically increasing for the packets within each stream; however
+  // this timestamp is not comparable across different streams.
+  google.protobuf.Timestamp timestamp = 2;
 }
 
 // This stores all semantic and metadata related one Packet.
