@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "absl/strings/str_format.h"
+#include "aistreams/base/packet_flags.h"
 #include "aistreams/gstreamer/gstreamer_raw_image_yielder.h"
 #include "aistreams/gstreamer/type_utils.h"
 #include "aistreams/port/canonical_errors.h"
@@ -32,6 +33,8 @@
 namespace aistreams {
 
 namespace {
+
+constexpr int kRetrySeconds = 1;
 
 class ImageProducer {
  public:
@@ -51,6 +54,11 @@ class ImageProducer {
   }
 
   Status Initialize() {
+    // Initialize the packet header queue.
+    packet_header_pcqueue_ =
+        std::move(std::make_unique<ProducerConsumerQueue<PacketHeader>>(
+            source_packet_queue_->capacity()));
+
     // We pull the first packet from the source stream and determine whether it
     // has the correct Packet type to even be decodable.
     auto first_packet_statusor = PullSourcePacket();
@@ -59,8 +67,6 @@ class ImageProducer {
       return UnavailableError("Unable to get the first packet from the server");
     }
 
-    // TODO: May need to be a bit more sophisticated to detect when packet
-    // metadata preservation makes sense. This drops it unilaterally.
     auto first_gstreamer_buffer_statusor =
         ToGstreamerBuffer(std::move(first_packet_statusor).ValueOrDie());
     if (!first_gstreamer_buffer_statusor.ok()) {
@@ -113,8 +119,10 @@ class ImageProducer {
     return p;
   }
 
-  // Helper to convert the given RawImage into a Packet, as well as pushing down
-  // the shared producer/consumer queue.
+  // Callback used to receive a decoded image from gstreamer.
+  //
+  // It will form a RawImage Packet from the decoded image and move it into the
+  // output image receiver queue.
   Status PushImagePacket(StatusOr<RawImage> raw_image_statusor) {
     if (!raw_image_statusor.ok()) {
       // We will detect/push EOS packets separately in Work().
@@ -127,16 +135,30 @@ class ImageProducer {
       }
     }
 
-    // Try to push a RawImage Packet onto the pcqueue.
-    // Drop if it is already full.
+    // Form a RawImage Packet.
     auto packet_statusor =
         MakePacket(std::move(raw_image_statusor).ValueOrDie());
     if (!packet_statusor.ok()) {
       LOG(ERROR) << packet_statusor.status();
       return InternalError("Unable to create a raw image packet");
     }
-    dest_image_packet_pcqueue_->TryEmplace(
-        std::move(packet_statusor).ValueOrDie());
+    auto packet = std::move(packet_statusor).ValueOrDie();
+
+    // Restore the corresponding frame head's header information.
+    PacketHeader frame_head_header;
+    if (packet_header_pcqueue_->TryPop(frame_head_header)) {
+      *packet.mutable_header()->mutable_timestamp() =
+          frame_head_header.timestamp();
+      *packet.mutable_header()->mutable_addenda() = frame_head_header.addenda();
+      *packet.mutable_header()->mutable_server_metadata() =
+          frame_head_header.server_metadata();
+      packet.mutable_header()->set_trace_context(
+          frame_head_header.trace_context());
+    }
+
+    // Try to push a RawImage Packet onto the pcqueue.
+    // Drop if it is already full.
+    dest_image_packet_pcqueue_->TryEmplace(std::move(packet));
     return OkStatus();
   }
 
@@ -153,8 +175,26 @@ class ImageProducer {
     return OkStatus();
   }
 
-  // Helper to feed a convert/feed a Packet into the Gstreamer.
+  // Helper to feed a convert/feed a Packet into the Gstreamer for decoding.
+  //
+  // Feed will queue headers for packets that are frame heads (i.e. the first
+  // in a sequence of packets that form a single coded picture). It will then
+  // push the payload into Gstreamer for decoding.
+  //
+  // PushImagePacket will then receive decoded frames and pop headers pushed by
+  // Feed in FIFO order. Since Gstreamer outputs decoded frames in order, the
+  // decoded frame recovers the corresponding frame head's header information.
   Status Feed(Packet packet) {
+    // Queue packet headers for frame heads.
+    if (IsPacketFlagsSet(PacketFlags::kIsFrameHead, packet)) {
+      auto p = std::make_unique<PacketHeader>(packet.header());
+      while (
+          !packet_header_pcqueue_->TryPush(p, absl::Seconds(kRetrySeconds))) {
+        LOG(WARNING) << "The header queue is full. The decoder is experiencing "
+                        "high input load. ";
+      }
+    }
+
     auto gstreamer_buffer_statusor = ToGstreamerBuffer(std::move(packet));
     if (!gstreamer_buffer_statusor.ok()) {
       return gstreamer_buffer_statusor.status();
@@ -192,7 +232,8 @@ class ImageProducer {
       }
     }
 
-    // Shut the decoder down and push a final EOS packet to notify the consumer.
+    // Shut the decoder down and push a final EOS packet to notify the
+    // consumer.
     auto status = yielder_->SignalEOS();
     if (!status.ok()) {
       LOG(ERROR) << status;
@@ -204,6 +245,7 @@ class ImageProducer {
   absl::Duration timeout_;
   std::unique_ptr<ReceiverQueue<Packet>> source_packet_queue_;
   std::shared_ptr<ProducerConsumerQueue<Packet>> dest_image_packet_pcqueue_;
+  std::unique_ptr<ProducerConsumerQueue<PacketHeader>> packet_header_pcqueue_;
   std::unique_ptr<GstreamerRawImageYielder> yielder_;
 };
 

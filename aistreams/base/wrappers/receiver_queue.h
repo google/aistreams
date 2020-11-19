@@ -33,6 +33,9 @@ class ReceiverQueue {
   // up to `timeout` for the queue to become non-empty.
   bool TryPop(T& elem, absl::Duration timeout);
 
+  // Returns the capacity of the queue.
+  int capacity() const;
+
   // Construct an instance owning a share to the given producer/consumer queue.
   ReceiverQueue(std::shared_ptr<ProducerConsumerQueue<T>>);
 
@@ -58,6 +61,11 @@ ReceiverQueue<T>::ReceiverQueue(std::shared_ptr<ProducerConsumerQueue<T>> q)
 template <typename T>
 bool ReceiverQueue<T>::TryPop(T& elem, absl::Duration timeout) {
   return pcqueue_->TryPop(elem, timeout);
+}
+
+template <typename T>
+int ReceiverQueue<T>::capacity() const {
+  return pcqueue_->capacity();
 }
 
 }  // namespace aistreams
