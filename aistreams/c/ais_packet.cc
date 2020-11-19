@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "aistreams/base/packet.h"
+#include "aistreams/base/packet_flags.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/base/util/packet_utils.h"
 #include "aistreams/c/ais_gstreamer_buffer.h"
@@ -36,6 +37,9 @@ using aistreams::MakeEosPacket;
 using aistreams::MakePacket;
 using aistreams::OkStatus;
 using aistreams::Packet;
+using aistreams::PacketFlags;
+using aistreams::SetPacketFlags;
+using aistreams::UnsetPacketFlags;
 
 void AIS_DeletePacket(AIS_Packet* p) { delete p; }
 
@@ -112,4 +116,22 @@ unsigned char AIS_IsEos(const AIS_Packet* ais_packet, char** reason) {
       static_cast<unsigned char>(IsEos(ais_packet->packet, &reason_string));
   *reason = strdup(reason_string.c_str());
   return is_eos;
+}
+
+void AIS_SetIsKeyFrame(unsigned char is_key_frame, AIS_Packet* ais_packet) {
+  if (is_key_frame) {
+    SetPacketFlags(PacketFlags::kIsKeyFrame, &ais_packet->packet);
+  } else {
+    UnsetPacketFlags(PacketFlags::kIsKeyFrame, &ais_packet->packet);
+  }
+  return;
+}
+
+void AIS_SetIsFrameHead(unsigned char is_frame_head, AIS_Packet* ais_packet) {
+  if (is_frame_head) {
+    SetPacketFlags(PacketFlags::kIsFrameHead, &ais_packet->packet);
+  } else {
+    UnsetPacketFlags(PacketFlags::kIsFrameHead, &ais_packet->packet);
+  }
+  return;
 }

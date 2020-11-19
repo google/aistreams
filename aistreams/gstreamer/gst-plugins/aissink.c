@@ -464,11 +464,23 @@ static GstFlowReturn ais_sink_render(GstBaseSink *bsink, GstBuffer *buffer) {
   g_free(caps_string);
   gst_caps_unref(caps);
 
-  // Create and send the packet.
+  // Create the packet.
   packet = AIS_NewGstreamerBufferPacket(ais_gstreamer_buffer, sink->ais_status);
   if (packet == NULL) {
     goto failed_new_packet;
   }
+
+  // Set/cache packet flags.
+  //
+  // TODO: Find a way to decide whether a buffer is the frame head.
+  //       One possibility is to use GST_BUFFER_FLAG_MARKER, but this bit is
+  //       not used uniformly across plugins.
+  //       Turn it on uniformly for the time being as it is by far the common case.
+  unsigned char is_key_frame = !GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DELTA_UNIT);
+  AIS_SetIsKeyFrame(is_key_frame, packet);
+  AIS_SetIsFrameHead(1, packet);
+
+  // Send the packet.
   AIS_SendPacket(sink->ais_sender, packet, sink->ais_status);
   if (AIS_GetCode(sink->ais_status) != AIS_OK) {
     goto failed_send_packet;

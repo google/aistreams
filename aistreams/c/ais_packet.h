@@ -82,6 +82,18 @@ extern void AIS_DeletePacket(AIS_Packet*);
 // the caller.
 extern unsigned char AIS_IsEos(const AIS_Packet* ais_packet, char** reason);
 
+// --------------------------------------------------------------------------
+// You should generally not use the methods below unless you are defining new
+// packet types or developing this library.
+
+// Mark whether the given `ais_packet` is a key frame.
+extern void AIS_SetIsKeyFrame(unsigned char is_key_frame,
+                              AIS_Packet* ais_packet);
+
+// Mark whether the given `ais_packet` is a frame head.
+extern void AIS_SetIsFrameHead(unsigned char is_frame_head,
+                               AIS_Packet* ais_packet);
+
 #ifdef __cplusplus
 } /* end extern "C" */
 #endif
