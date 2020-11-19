@@ -143,9 +143,9 @@ class GstreamerRunner::GstreamerRuntimeImpl {
 
 Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
   // Create the full gstreamer pipeline.
-  std::string pipeline_string =
-      absl::StrFormat("appsrc name=%s ! %s ! appsink name=%s", kAppSrcName,
-                      options_.processing_pipeline_string, kAppSinkName);
+  std::string pipeline_string = absl::StrFormat(
+      "appsrc name=%s is-live=true ! %s ! appsink name=%s", kAppSrcName,
+      options_.processing_pipeline_string, kAppSinkName);
   gst_pipeline_ = gst_parse_launch(pipeline_string.c_str(), NULL);
   if (gst_pipeline_ == nullptr) {
     return InvalidArgumentError(absl::StrFormat(
