@@ -112,4 +112,28 @@ TEST(PacketUtilsTest, AddendumTest) {
   }
 }
 
+TEST(PacketUtilsTest, FlagsTest) {
+  {
+    Packet p;
+    ClearPacketFlags(&p);
+    EXPECT_FALSE(IsFrameHead(p));
+    EXPECT_FALSE(IsKeyFrame(p));
+
+    ClearPacketFlags(&p);
+    SetPacketFlags(PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, &p);
+    EXPECT_TRUE(IsFrameHead(p));
+    EXPECT_TRUE(IsKeyFrame(p));
+
+    ClearPacketFlags(&p);
+    SetPacketFlags(PacketFlags::kIsFrameHead, &p);
+    EXPECT_TRUE(IsFrameHead(p));
+    EXPECT_FALSE(IsKeyFrame(p));
+
+    ClearPacketFlags(&p);
+    SetPacketFlags(PacketFlags::kIsKeyFrame, &p);
+    EXPECT_FALSE(IsFrameHead(p));
+    EXPECT_TRUE(IsKeyFrame(p));
+  }
+}
+
 }  // namespace aistreams

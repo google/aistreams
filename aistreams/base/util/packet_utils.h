@@ -79,6 +79,22 @@ Status GetStringAddendum(const Packet& p, const std::string& key,
 Status GetProtoAddendum(const Packet& p, const std::string& key,
                         google::protobuf::Message* m);
 
+// ------------------------------------------------------------------
+// Packet flags utilities.
+//
+
+// Returns true if and only if the given packet is a key frame.
+//
+// A key frame is any packet whose payload can be decoded independently of any
+// other packets.
+bool IsKeyFrame(const Packet&);
+
+// (experimental) Returns true if and only if the given packet is a frame head.
+//
+// A frame head is a packet that is the first packet in a sequence of packets
+// that forms a single coded picture.
+bool IsFrameHead(const Packet&);
+
 }  // namespace aistreams
 
 #endif  // AISTREAMS_BASE_UTIL_PACKET_UTILS_H_

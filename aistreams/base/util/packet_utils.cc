@@ -18,6 +18,7 @@
 
 #include "absl/strings/str_format.h"
 #include "aistreams/base/packet.h"
+#include "aistreams/base/packet_flags.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
 #include "aistreams/proto/types/control_signal_packet_type_descriptor.pb.h"
@@ -151,6 +152,14 @@ Status DeleteAddendum(const std::string& key, Packet* packet) {
   auto* addenda = packet->mutable_header()->mutable_addenda();
   addenda->erase(key);
   return OkStatus();
+}
+
+bool IsKeyFrame(const Packet& p) {
+  return IsPacketFlagsSet(PacketFlags::kIsKeyFrame, p);
+}
+
+bool IsFrameHead(const Packet& p) {
+  return IsPacketFlagsSet(PacketFlags::kIsFrameHead, p);
 }
 
 }  // namespace aistreams
