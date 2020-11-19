@@ -50,7 +50,7 @@ StatusOr<RawImageDescriptor> ValidateAndGetDescriptor(const Packet& p) {
   }
   auto expected_payload_size =
       std::move(expected_payload_size_statusor).ValueOrDie();
-  if (p.payload().size() != expected_payload_size) {
+  if (p.payload().size() != static_cast<size_t>(expected_payload_size)) {
     return InvalidArgumentError(absl::StrFormat(
         "The given Packet's payload size is inconsistent with its "
         "RawImageDescriptor (%d vs %d)",
