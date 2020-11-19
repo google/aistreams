@@ -19,5 +19,6 @@
 
 #include "aistreams/base/make_packet.h"
 #include "aistreams/base/packet_as.h"
+#include "aistreams/base/packet_flags.h"
 
 #endif  // AISTREAMS_BASE_PACKET_H_

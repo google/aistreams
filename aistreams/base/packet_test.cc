@@ -40,6 +40,8 @@ TEST(PacketTest, MakePacketStringTest) {
     auto packet = std::move(packet_status_or).ValueOrDie();
     EXPECT_EQ(packet.header().type().type_id(), PACKET_TYPE_STRING);
     EXPECT_EQ(packet.payload(), s);
+    EXPECT_TRUE(IsPacketFlagsSet(
+        PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, packet));
   }
   {
     std::string s("hello!");
@@ -90,6 +92,8 @@ TEST(PacketTest, MakePacketRawImageTest) {
     EXPECT_EQ(packet.payload()[1], 1);
     EXPECT_EQ(packet.payload()[2], 4);
     EXPECT_EQ(packet.payload().size(), 18);
+    EXPECT_TRUE(IsPacketFlagsSet(
+        PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, packet));
   }
 }
 
@@ -147,6 +151,8 @@ TEST(PacketTest, MakePacketJpegFrameTest) {
       EXPECT_EQ(packet.payload()[i], bytes[i]);
     }
     EXPECT_EQ(packet.payload().size(), bytes.size());
+    EXPECT_TRUE(IsPacketFlagsSet(
+        PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, packet));
   }
 }
 
@@ -183,6 +189,8 @@ TEST(PacketTest, ProtobufPacketTest) {
     EXPECT_TRUE(packet_status_or.ok());
     auto protobuf_packet = std::move(packet_status_or).ValueOrDie();
     EXPECT_EQ(protobuf_packet.header().type().type_id(), PACKET_TYPE_PROTOBUF);
+    EXPECT_TRUE(IsPacketFlagsSet(
+        PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, protobuf_packet));
 
     // Reading out the string Packet from the protobuf Packet.
     PacketAs<Packet> packet_as(protobuf_packet);
@@ -242,6 +250,8 @@ TEST(PacketTest, MakePacketGstreamerBufferTest) {
       EXPECT_EQ(packet.payload()[i], bytes[i]);
     }
     EXPECT_EQ(packet.payload().size(), bytes.size());
+    EXPECT_TRUE(IsPacketFlagsSet(
+        PacketFlags::kIsFrameHead | PacketFlags::kIsKeyFrame, packet));
 
     GstreamerBufferPacketTypeDescriptor gstreamer_buffer_packet_type_desc;
     EXPECT_TRUE(packet.header().type().type_descriptor().UnpackTo(
@@ -302,6 +312,8 @@ TEST(PacketTest, MakePacketEosTest) {
     EXPECT_TRUE(packet_status_or.ok());
     auto packet = std::move(packet_status_or).ValueOrDie();
     EXPECT_EQ(packet.header().type().type_id(), PACKET_TYPE_CONTROL_SIGNAL);
+    EXPECT_FALSE(IsPacketFlagsSet(PacketFlags::kIsFrameHead, packet));
+    EXPECT_FALSE(IsPacketFlagsSet(PacketFlags::kIsKeyFrame, packet));
 
     EosValue dst_eos_value;
     EXPECT_TRUE(dst_eos_value.ParseFromString(packet.payload()));

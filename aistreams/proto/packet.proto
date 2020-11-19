@@ -44,19 +44,17 @@ message PacketHeader {
   // Each custom user data (addendum) is an entry in this map. When you attach a
   // new addendum, make sure to choose a key that is not already present. Do not
   // delete any entries other than those that you own.
-  //
-  // This is meant for custom data that is domain specific with possibly high
-  // turnover. If you find yourself relying on addendum entries for non-trivial
-  // "type checking", then that might be a sign for you to consider creating a
-  // new PacketType.
   map<string, google.protobuf.Any> addenda = 3;
 
-  // The tracing context of the packet, for purpose of distributed tracing.
+  // The tracing context for distributed tracing.
   string trace_context = 4;
 
   // Metadata that the server appends to each packet before sending it to
   // receivers. You don't need to set value for this field when sending packets.
   ServerMetadata server_metadata = 5;
+
+  // Packet flag set.
+  int32 flags = 6;
 }
 
 // The quanta of datum that a stream accepts.

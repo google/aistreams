@@ -14,6 +14,7 @@ cc_library(
         "packet.h",
     ],
     deps = [
+        ":packet_flags",
         "//aistreams/base/types",
         "//aistreams/port:logging",
         "//aistreams/port:status",
@@ -38,6 +39,32 @@ cc_test(
         "//aistreams/proto/types:raw_image_packet_type_descriptor_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
+    name = "packet_flags",
+    srcs = [
+        "packet_flags.cc",
+    ],
+    hdrs = [
+        "packet_flags.h",
+    ],
+    deps = [
+        "//aistreams/port:status",
+        "//aistreams/proto:packet_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "packet_flags_test",
+    srcs = ["packet_flags_test.cc"],
+    deps = [
+        ":packet",
+        "//aistreams/port:gtest_main",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/proto:packet_cc_proto",
     ],
 )
 

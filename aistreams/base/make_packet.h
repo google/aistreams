@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "absl/strings/string_view.h"
+#include "aistreams/base/packet_flags.h"
 #include "aistreams/base/types/packet_types/packet_types.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
@@ -66,6 +67,7 @@ StatusOr<Packet> MakePacket(T&& t, PacketHeader header, bool set_current_time) {
   if (set_current_time) {
     AIS_RETURN_IF_ERROR(internal::SetToCurrentTime(&p));
   }
+  AIS_RETURN_IF_ERROR(RestoreDefaultPacketFlags(&p));
   return p;
 }
 
