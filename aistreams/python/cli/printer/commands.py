@@ -52,7 +52,7 @@ _PLAYBACK_APP_NAME = "printer_app"
     help="The name of the stream to print.")
 @click.option(
     "--receiver-timeout",
-    default=5,
+    default=15,
     type=int,
     help="The timeout (in seconds) for the server to yield a packet.")
 def cli(target_address, authenticate_with_google, ssl_root_cert_path,

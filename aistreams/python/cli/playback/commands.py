@@ -52,7 +52,7 @@ _PLAYBACK_APP_NAME = "playback_app"
     help="The name of the stream to playback from.")
 @click.option(
     "--receiver-timeout",
-    default=5,
+    default=15,
     type=int,
     help="The timeout (in seconds) for the server to yield a packet.")
 @click.option(
