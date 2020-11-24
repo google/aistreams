@@ -28,6 +28,7 @@ cc_library(
     hdrs = [
         "producer_consumer_queue.h",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         "//aistreams/port:logging",
         "@com_google_absl//absl/synchronization",
