@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "absl/synchronization/mutex.h"
 #include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/logging.h"
@@ -34,15 +35,84 @@ namespace {
 
 constexpr char kAppSrcName[] = "feed";
 constexpr char kAppSinkName[] = "fetch";
+constexpr int kPipelineFinishTimeoutSeconds = 5;
 
-// Callback attached to the GLib main loop.
+// An object used to signal completion to collaborating threads.
+class CompletionSignal {
+ public:
+  CompletionSignal() = default;
+  ~CompletionSignal() = default;
+
+  void Start() {
+    absl::MutexLock lock(&is_completed_mu_);
+    is_completed_ = false;
+  }
+
+  void End() {
+    absl::MutexLock lock(&is_completed_mu_);
+    is_completed_ = true;
+  }
+
+  bool IsCompleted() {
+    absl::MutexLock lock(&is_completed_mu_);
+    return is_completed_;
+  }
+
+  bool WaitUntilComplete(absl::Duration timeout) {
+    absl::MutexLock lock(&is_completed_mu_);
+    absl::Condition cond(
+        +[](bool* is_completed) -> bool { return *is_completed; },
+        &is_completed_);
+    return is_completed_mu_.AwaitWithTimeout(cond, timeout);
+  }
+
+  CompletionSignal(const CompletionSignal&) = delete;
+  CompletionSignal(CompletionSignal&&) = delete;
+  CompletionSignal& operator=(const CompletionSignal&) = delete;
+
+ private:
+  mutable absl::Mutex is_completed_mu_;
+  bool is_completed_ ABSL_GUARDED_BY(is_completed_mu_) = true;
+};
+
+// RAII object that grants a *running* glib main loop.
+//
+// The event loop is run in a background thread. Gstreamer's Bus mechanism works
+// as long as there is some glib main loop running; i.e. it needn't be in the
+// main thread.
+class GMainLoopManager {
+ public:
+  GMainLoopManager() {
+    glib_main_loop_ = g_main_loop_new(NULL, FALSE);
+    glib_main_loop_runner_ =
+        std::thread([this]() { g_main_loop_run(glib_main_loop_); });
+    while (g_main_loop_is_running(glib_main_loop_) != TRUE)
+      ;
+  }
+
+  ~GMainLoopManager() {
+    g_main_loop_quit(glib_main_loop_);
+    glib_main_loop_runner_.join();
+    g_main_loop_unref(glib_main_loop_);
+  }
+
+  GMainLoopManager(const GMainLoopManager&) = delete;
+  GMainLoopManager(GMainLoopManager&&) = delete;
+  GMainLoopManager& operator=(const GMainLoopManager&) = delete;
+
+ private:
+  GMainLoop* glib_main_loop_ = nullptr;
+  std::thread glib_main_loop_runner_;
+};
+
+// Callback attached to observe pipeline bus messages.
 gboolean gst_bus_message_callback(GstBus* bus, GstMessage* message,
-                                  GMainLoop* loop) {
+                                  CompletionSignal* signal) {
   GError* err;
   gchar* debug_info;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
-      g_main_loop_quit(loop);
+      signal->End();
       break;
     case GST_MESSAGE_ERROR:
       gst_message_parse_error(message, &err, &debug_info);
@@ -52,7 +122,7 @@ gboolean gst_bus_message_callback(GstBus* bus, GstMessage* message,
       LOG(ERROR) << absl::StrFormat("Additional debug info: %s",
                                     debug_info ? debug_info : "none");
       LOG(ERROR) << "Got gstreamer error; shutting down event loop";
-      g_main_loop_quit(loop);
+      signal->End();
       break;
     default:
       break;
@@ -108,7 +178,7 @@ Status ValidateRunnerOptions(const GstreamerRunnerOptions& options) {
 
 }  // namespace
 
-// A class that manages the runtime/context of a Gstreamer pipeline.
+// A class that manages a running Gstreamer pipeline.
 class GstreamerRunner::GstreamerRuntimeImpl {
  public:
   struct Options {
@@ -117,28 +187,32 @@ class GstreamerRunner::GstreamerRuntimeImpl {
     ReceiverCallback receiver_callback;
   };
 
-  GstreamerRuntimeImpl(const Options& options) : options_(options) {}
+  // Create a fully initialized and running gstreamer pipeline.
+  static StatusOr<std::unique_ptr<GstreamerRuntimeImpl>> Create(
+      const Options& options) {
+    auto runtime_impl = std::make_unique<GstreamerRuntimeImpl>(options);
+    AIS_RETURN_IF_ERROR(runtime_impl->Initialize());
+    return runtime_impl;
+  }
 
-  // Allocates and initializes a Gstreamer pipeline and any necessary resources
-  // to support its execution.
-  Status Initialize();
-
-  // Feeds a GstreamerBuffer down the Gstreamer pipeline.
+  // Feed a GstreamerBuffer into the running pipeline.
   Status Feed(const GstreamerBuffer&);
 
-  // Frees the Gstreamer pipeline and any resources that was needed for its
-  // executution.
-  Status Finalize();
-
+  GstreamerRuntimeImpl(const Options& options) : options_(options) {}
   ~GstreamerRuntimeImpl();
 
  private:
+  Status Initialize();
+  Status Finalize();
+
   Options options_;
+
   GstElement* gst_pipeline_ = nullptr;
-  GMainLoop* glib_main_loop_ = nullptr;
   GstElement* gst_appsrc_ = nullptr;
   GstElement* gst_appsink_ = nullptr;
-  std::thread glib_main_loop_runner_;
+
+  std::unique_ptr<CompletionSignal> completion_signal_ = nullptr;
+  std::unique_ptr<GMainLoopManager> glib_loop_manager_ = nullptr;
 };
 
 Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
@@ -153,12 +227,6 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
         "given a valid processing pipeline string",
         pipeline_string));
   }
-
-  // Create the GLib event loop.
-  glib_main_loop_ = g_main_loop_new(NULL, FALSE);
-  GstBus* bus = gst_element_get_bus(gst_pipeline_);
-  gst_bus_add_watch(bus, (GstBusFunc)gst_bus_message_callback, glib_main_loop_);
-  gst_object_unref(bus);
 
   // Setup the appsrc.
   gst_appsrc_ = gst_bin_get_by_name(GST_BIN(gst_pipeline_), kAppSrcName);
@@ -187,36 +255,51 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
                    G_CALLBACK(on_new_sample_from_sink),
                    &options_.receiver_callback);
 
-  // Play the gstreamer pipeline and start the glib main loop.
+  // Observe the pipeline bus.
+  completion_signal_ = std::make_unique<CompletionSignal>();
+  GstBus* bus = gst_element_get_bus(gst_pipeline_);
+  gst_bus_add_watch(bus, (GstBusFunc)gst_bus_message_callback,
+                    completion_signal_.get());
+  gst_object_unref(bus);
+
+  // Start the pipeline.
+  completion_signal_->Start();
+  glib_loop_manager_ = std::make_unique<GMainLoopManager>();
   gst_element_set_state(gst_pipeline_, GST_STATE_PLAYING);
-  glib_main_loop_runner_ =
-      std::thread([this]() { g_main_loop_run(glib_main_loop_); });
 
   return OkStatus();
 }
 
 Status GstreamerRunner::GstreamerRuntimeImpl::Finalize() {
-  // Signal EOS. This will cause the pipeline to cease and trigger the GLib
-  // event loop to stop.
-  //
-  // TODO(dschao): Check whether this works when the pipeline is already in an
-  // error state. Find the "end-of-stream" handler in the gstreamer source.
-  GstFlowReturn ret;
-  g_signal_emit_by_name(gst_appsrc_, "end-of-stream", &ret);
-  if (glib_main_loop_runner_.joinable()) {
-    glib_main_loop_runner_.join();
+  // Allow the pipeline to complete its processing gracefully.
+  // Do this by sending it EOS and enforcing a deadline.
+  if (!completion_signal_->IsCompleted()) {
+    GstFlowReturn ret;
+    g_signal_emit_by_name(gst_appsrc_, "end-of-stream", &ret);
+    if (!completion_signal_->WaitUntilComplete(
+            absl::Seconds(kPipelineFinishTimeoutSeconds))) {
+      LOG(WARNING) << "The gstreamer pipeline could not complete its cleanup "
+                      "executions within the timeout ( "
+                   << kPipelineFinishTimeoutSeconds
+                   << "s). Discarding to move on; consumers might experince "
+                      "dropped results";
+    }
   }
-
-  // Set the pipeline to the null state.
   gst_element_set_state(gst_pipeline_, GST_STATE_NULL);
 
   // Cleanup.
   gst_object_unref(gst_appsink_);
   gst_object_unref(gst_appsrc_);
-  g_main_loop_unref(glib_main_loop_);
   gst_object_unref(gst_pipeline_);
 
   return OkStatus();
+}
+
+GstreamerRunner::GstreamerRuntimeImpl::~GstreamerRuntimeImpl() {
+  auto status = Finalize();
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+  }
 }
 
 Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
@@ -248,13 +331,6 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
     return InternalError("Failed to push a GstBuffer");
   }
   return OkStatus();
-}
-
-GstreamerRunner::GstreamerRuntimeImpl::~GstreamerRuntimeImpl() {
-  // Prevent the program from terminating if Finalize wasn't called/complete.
-  if (glib_main_loop_runner_.joinable()) {
-    glib_main_loop_runner_.detach();
-  }
 }
 
 // -----------------------------------------------------------------------
@@ -311,18 +387,13 @@ Status GstreamerRunner::Start() {
   options.processing_pipeline_string = options_.processing_pipeline_string;
   options.appsrc_caps_string = options_.appsrc_caps_string;
   options.receiver_callback = receiver_callback_;
-  gstreamer_runtime_impl_ = std::make_unique<GstreamerRuntimeImpl>(options);
-
-  // Initialize the GstreamerRuntimeImpl.
-  status = gstreamer_runtime_impl_->Initialize();
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-
-    // TODO(dschao): This could leak resources. Probably ok for most cases, but
-    // would be nice if this could be friendlier.
-    gstreamer_runtime_impl_.reset(nullptr);
-    return UnknownError("Failed to Initialize a GstreamerRuntimeImpl");
+  auto gstreamer_runtime_impl_statusor = GstreamerRuntimeImpl::Create(options);
+  if (!gstreamer_runtime_impl_statusor.ok()) {
+    LOG(ERROR) << gstreamer_runtime_impl_statusor.status();
+    return UnknownError("Failed to create a gstreamer runtime");
   }
+  gstreamer_runtime_impl_ =
+      std::move(gstreamer_runtime_impl_statusor).ValueOrDie();
 
   return OkStatus();
 }
@@ -331,11 +402,7 @@ Status GstreamerRunner::End() {
   if (!IsStarted()) {
     return FailedPreconditionError("The runner has already Ended");
   }
-  Status status = gstreamer_runtime_impl_->Finalize();
   gstreamer_runtime_impl_.reset(nullptr);
-  if (!status.ok()) {
-    return UnknownError("Failed to Finalize a GstreamerRuntimeImpl");
-  }
   return OkStatus();
 }
 
