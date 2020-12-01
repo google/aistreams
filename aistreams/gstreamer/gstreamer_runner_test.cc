@@ -56,56 +56,51 @@ TEST(GstreamerRunner, JpegFeederTest) {
   ProducerConsumerQueue<GstreamerBuffer> pcqueue(10);
 
   // Options to process Jpeg images.
-  GstreamerRunnerOptions options;
-  options.processing_pipeline_string = kProcessingPipelineString;
-  options.appsrc_caps_string = kJpegCapsString;
-
-  // Allocate the runner and configure it.
-  GstreamerRunner runner(options);
-  Status status = runner.SetReceiver(
-      [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-        pcqueue.TryEmplace(std::move(gstreamer_buffer));
-        return OkStatus();
-      });
-  EXPECT_TRUE(status.ok());
-
-  // Start the runner.
-  EXPECT_TRUE(runner.Start().ok());
-
-  // Feed the first jpeg.
   {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
-            .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-  }
+    GstreamerRunner::Options options;
+    options.processing_pipeline_string = kProcessingPipelineString;
+    options.appsrc_caps_string = kJpegCapsString;
+    options.receiver_callback =
+        [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
-  // Feed a different jpeg.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
-            .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-  }
+    // Feed the first jpeg.
+    {
+      GstreamerBuffer gstreamer_buffer =
+          GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
+              .ValueOrDie();
+      EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
+    }
 
-  // Feed a png. This should fail.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageGooglePath, kPngCapsString)
-            .ValueOrDie();
-    EXPECT_FALSE(runner.Feed(gstreamer_buffer).ok());
-  }
+    // Feed a different jpeg.
+    {
+      GstreamerBuffer gstreamer_buffer =
+          GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
+              .ValueOrDie();
+      EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
+    }
 
-  // Feed the first jpeg again.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
-            .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-  }
+    // Feed a png. This should fail.
+    {
+      GstreamerBuffer gstreamer_buffer =
+          GstreamerBufferFromFile(kTestImageGooglePath, kPngCapsString)
+              .ValueOrDie();
+      EXPECT_FALSE(runner->Feed(gstreamer_buffer).ok());
+    }
 
-  // End the runner.
-  EXPECT_TRUE(runner.End().ok());
+    // Feed the first jpeg again.
+    {
+      GstreamerBuffer gstreamer_buffer =
+          GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
+              .ValueOrDie();
+      EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
+    }
+  }
 
   // Verify the results.
   {
@@ -160,121 +155,6 @@ TEST(GstreamerRunner, JpegFeederTest) {
     EXPECT_EQ(media_type, "video/x-raw");
     EXPECT_EQ(height, 512);
     EXPECT_EQ(width, 512);
-    EXPECT_EQ(format, "RGB");
-  }
-  {
-    GstreamerBuffer gstreamer_buffer;
-    EXPECT_FALSE(pcqueue.TryPop(gstreamer_buffer, absl::Seconds(1)));
-  }
-}
-
-TEST(GstreamerRunner, PipelineChangeTest) {
-  ProducerConsumerQueue<GstreamerBuffer> pcqueue(10);
-
-  // Setup a Jpeg pipeline.
-  GstreamerRunnerOptions options;
-  options.processing_pipeline_string = kProcessingPipelineString;
-  options.appsrc_caps_string = kJpegCapsString;
-
-  GstreamerRunner runner(options);
-  Status status = runner.SetReceiver(
-      [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-        pcqueue.TryEmplace(std::move(gstreamer_buffer));
-        return OkStatus();
-      });
-  EXPECT_TRUE(status.ok());
-
-  // Start the jpeg runner.
-  EXPECT_TRUE(runner.Start().ok());
-
-  // Feed a jpeg.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
-            .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-  }
-
-  // Feed a png. This should fail.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageGooglePath, kPngCapsString)
-            .ValueOrDie();
-    EXPECT_FALSE(runner.Feed(gstreamer_buffer).ok());
-  }
-
-  // End the jpeg runner.
-  EXPECT_TRUE(runner.End().ok());
-
-  // Setup a Png pipeline.
-  options.processing_pipeline_string = kProcessingPipelineString;
-  options.appsrc_caps_string = kPngCapsString;
-  runner.SetOptions(options);
-
-  status = runner.SetReceiver(
-      [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-        pcqueue.TryEmplace(std::move(gstreamer_buffer));
-        return OkStatus();
-      });
-  EXPECT_TRUE(status.ok());
-
-  // Start the png runner.
-  EXPECT_TRUE(runner.Start().ok());
-
-  // Feed a jpeg. This should fail.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
-            .ValueOrDie();
-    EXPECT_FALSE(runner.Feed(gstreamer_buffer).ok());
-  }
-
-  // Feed a png.
-  {
-    GstreamerBuffer gstreamer_buffer =
-        GstreamerBufferFromFile(kTestImageGooglePath, kPngCapsString)
-            .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-  }
-
-  // End the png runner.
-  EXPECT_TRUE(runner.End().ok());
-
-  // Verify the results.
-  {
-    GstreamerBuffer gstreamer_buffer;
-    EXPECT_TRUE(pcqueue.TryPop(gstreamer_buffer, absl::Seconds(1)));
-
-    GstCaps* gst_caps = gst_caps_from_string(gstreamer_buffer.get_caps_cstr());
-    GstStructure* structure = gst_caps_get_structure(gst_caps, 0);
-    std::string media_type(gst_structure_get_name(structure));
-    int height, width;
-    EXPECT_TRUE(gst_structure_get_int(structure, "height", &height) == TRUE);
-    EXPECT_TRUE(gst_structure_get_int(structure, "width", &width) == TRUE);
-    std::string format(gst_structure_get_string(structure, "format"));
-    gst_caps_unref(gst_caps);
-
-    EXPECT_EQ(media_type, "video/x-raw");
-    EXPECT_EQ(height, 512);
-    EXPECT_EQ(width, 512);
-    EXPECT_EQ(format, "RGB");
-  }
-  {
-    GstreamerBuffer gstreamer_buffer;
-    EXPECT_TRUE(pcqueue.TryPop(gstreamer_buffer, absl::Seconds(1)));
-
-    GstCaps* gst_caps = gst_caps_from_string(gstreamer_buffer.get_caps_cstr());
-    GstStructure* structure = gst_caps_get_structure(gst_caps, 0);
-    std::string media_type(gst_structure_get_name(structure));
-    int height, width;
-    EXPECT_TRUE(gst_structure_get_int(structure, "height", &height) == TRUE);
-    EXPECT_TRUE(gst_structure_get_int(structure, "width", &width) == TRUE);
-    std::string format(gst_structure_get_string(structure, "format"));
-    gst_caps_unref(gst_caps);
-
-    EXPECT_EQ(media_type, "video/x-raw");
-    EXPECT_EQ(height, 225);
-    EXPECT_EQ(width, 225);
     EXPECT_EQ(format, "RGB");
   }
   {

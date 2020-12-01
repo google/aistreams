@@ -60,24 +60,23 @@ TEST(TypeUtils, NoPaddingTest) {
 
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kRgbPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   {
@@ -100,24 +99,23 @@ TEST(TypeUtils, PaddingTest) {
 
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kRgbPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   {
@@ -141,24 +139,23 @@ TEST(TypeUtils, YuvFailTest) {
 
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kYuvPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   {
@@ -176,24 +173,23 @@ TEST(TypeUtils, RgbaFailTest) {
 
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kRgbaPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   {
@@ -247,24 +243,23 @@ TEST(TypeUtils, NoPaddingRgbRawImagePacketToGstreamerBuffer) {
   ProducerConsumerQueue<GstreamerBuffer> pcqueue(1);
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kRgbPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageLenaPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   // Actual test starts here.
@@ -301,24 +296,23 @@ TEST(TypeUtils, PaddingRgbRawImagePacketToGstreamerBuffer) {
   ProducerConsumerQueue<GstreamerBuffer> pcqueue(1);
   {
     // Setup a pipeline to convert a jpeg into an RGB image.
-    GstreamerRunnerOptions options;
+    GstreamerRunner::Options options;
     options.processing_pipeline_string = kRgbPipeline;
     options.appsrc_caps_string = kJpegCapsString;
-
-    GstreamerRunner runner(options);
-    Status status = runner.SetReceiver(
+    options.receiver_callback =
         [&pcqueue](GstreamerBuffer gstreamer_buffer) -> Status {
-          pcqueue.TryEmplace(std::move(gstreamer_buffer));
-          return OkStatus();
-        });
-    EXPECT_TRUE(runner.Start().ok());
+      pcqueue.TryEmplace(std::move(gstreamer_buffer));
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    EXPECT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
 
     // Decode the jpeg into an RGB image and close the runner.
     GstreamerBuffer gstreamer_buffer =
         GstreamerBufferFromFile(kTestImageSquaresPath, kJpegCapsString)
             .ValueOrDie();
-    EXPECT_TRUE(runner.Feed(gstreamer_buffer).ok());
-    EXPECT_TRUE(runner.End().ok());
+    EXPECT_TRUE(runner->Feed(gstreamer_buffer).ok());
   }
 
   // Actual test starts here.

@@ -166,7 +166,7 @@ GstFlowReturn on_new_sample_from_sink(
   return GST_FLOW_OK;
 }
 
-Status ValidateRunnerOptions(const GstreamerRunnerOptions& options) {
+Status ValidateRunnerOptions(const GstreamerRunner::Options& options) {
   if (options.processing_pipeline_string.empty()) {
     return InvalidArgumentError("Given an empty processing pipeline string");
   }
@@ -181,15 +181,15 @@ Status ValidateRunnerOptions(const GstreamerRunnerOptions& options) {
 // A class that manages a running Gstreamer pipeline.
 class GstreamerRunner::GstreamerRuntimeImpl {
  public:
-  struct Options {
-    std::string processing_pipeline_string;
-    std::string appsrc_caps_string;
-    ReceiverCallback receiver_callback;
-  };
-
   // Create a fully initialized and running gstreamer pipeline.
   static StatusOr<std::unique_ptr<GstreamerRuntimeImpl>> Create(
       const Options& options) {
+    auto status = ValidateRunnerOptions(options);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return InvalidArgumentError(
+          "The given GstreamerRunner::Options has errors");
+    }
     auto runtime_impl = std::make_unique<GstreamerRuntimeImpl>(options);
     AIS_RETURN_IF_ERROR(runtime_impl->Initialize());
     return runtime_impl;
@@ -305,10 +305,6 @@ GstreamerRunner::GstreamerRuntimeImpl::~GstreamerRuntimeImpl() {
 Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
     const GstreamerBuffer& gstreamer_buffer) {
   // Check that the given caps agree with those of the pipeline.
-  //
-  // Our way of supporting caps changes is to bringup/teardown the
-  // GstreamerRuntimeImpl itself rather than deal with the nuances of doing this
-  // in situ from within Gstreamer.
   if (gstreamer_buffer.get_caps() != options_.appsrc_caps_string) {
     return InvalidArgumentError(absl::StrFormat(
         "Feeding an appsrc with caps \"%s\" with a data of caps \"%s\"",
@@ -338,39 +334,13 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
 
 GstreamerRunner::GstreamerRunner() = default;
 
-GstreamerRunner::GstreamerRunner(const GstreamerRunnerOptions& options)
-    : options_(options) {}
+GstreamerRunner::~GstreamerRunner() = default;
 
-GstreamerRunner::~GstreamerRunner() {}
+StatusOr<std::unique_ptr<GstreamerRunner>> GstreamerRunner::Create(
+    const Options& options) {
+  auto gstreamer_runner = std::make_unique<GstreamerRunner>();
 
-Status GstreamerRunner::SetOptions(const GstreamerRunnerOptions& options) {
-  if (IsStarted()) {
-    return FailedPreconditionError(
-        "You cannot SetOptions while the runner has Started");
-  }
-  options_ = options;
-  return OkStatus();
-}
-
-Status GstreamerRunner::SetReceiver(const ReceiverCallback& callback) {
-  if (IsStarted()) {
-    return FailedPreconditionError(
-        "You cannot SetReceiver while the runner has Started");
-  }
-  receiver_callback_ = callback;
-  return OkStatus();
-}
-
-bool GstreamerRunner::IsStarted() const {
-  return gstreamer_runtime_impl_ != nullptr;
-}
-
-Status GstreamerRunner::Start() {
-  if (IsStarted()) {
-    return FailedPreconditionError("The runner has already Started");
-  }
-
-  // Initialize gstreamer if not already.
+  // Initializes gstreamer if it isn't already.
   Status status = GstInit();
   if (!status.ok()) {
     LOG(ERROR) << status;
@@ -378,38 +348,17 @@ Status GstreamerRunner::Start() {
   }
 
   // Create a GstreamerRuntimeImpl.
-  status = ValidateRunnerOptions(options_);
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-    return InvalidArgumentError("The given GstreamerRunnerOptions has errors");
-  }
-  GstreamerRuntimeImpl::Options options;
-  options.processing_pipeline_string = options_.processing_pipeline_string;
-  options.appsrc_caps_string = options_.appsrc_caps_string;
-  options.receiver_callback = receiver_callback_;
   auto gstreamer_runtime_impl_statusor = GstreamerRuntimeImpl::Create(options);
   if (!gstreamer_runtime_impl_statusor.ok()) {
     LOG(ERROR) << gstreamer_runtime_impl_statusor.status();
     return UnknownError("Failed to create a gstreamer runtime");
   }
-  gstreamer_runtime_impl_ =
+  gstreamer_runner->gstreamer_runtime_impl_ =
       std::move(gstreamer_runtime_impl_statusor).ValueOrDie();
-
-  return OkStatus();
-}
-
-Status GstreamerRunner::End() {
-  if (!IsStarted()) {
-    return FailedPreconditionError("The runner has already Ended");
-  }
-  gstreamer_runtime_impl_.reset(nullptr);
-  return OkStatus();
+  return gstreamer_runner;
 }
 
 Status GstreamerRunner::Feed(const GstreamerBuffer& gstreamer_buffer) {
-  if (!IsStarted()) {
-    return FailedPreconditionError("The runner has not been Started");
-  }
   Status status = gstreamer_runtime_impl_->Feed(gstreamer_buffer);
   if (!status.ok()) {
     LOG(ERROR) << status;

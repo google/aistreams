@@ -28,17 +28,6 @@ namespace {
 constexpr char kGenericDecodeString[] =
     "decodebin ! videoconvert ! video/x-raw,format=RGB";
 
-// TODO: Simply use the generic decoding pipeline for starters.
-// Let the runner handle the checks. May want to consider doing more upfront
-// checks here in the future.
-GstreamerRunnerOptions ConstructGstreamerRunnerOptions(
-    const GstreamerRawImageYielder::Options& options) {
-  GstreamerRunnerOptions runner_options;
-  runner_options.appsrc_caps_string = options.caps_string;
-  runner_options.processing_pipeline_string = kGenericDecodeString;
-  return runner_options;
-}
-
 Status EOSStatus() {
   return Status(StatusCode::kResourceExhausted, "Reached EOS");
 }
@@ -66,30 +55,26 @@ GstreamerRawImageYielder::Create(const Options& options) {
 }
 
 Status GstreamerRawImageYielder::Initialize() {
-  auto gstreamer_runner_options = ConstructGstreamerRunnerOptions(options_);
-  gstreamer_runner_ =
-      std::make_unique<GstreamerRunner>(gstreamer_runner_options);
-  auto gstreamer_runner_receiver =
-      [this](GstreamerBuffer gstreamer_buffer) -> Status {
-    // No-op if callback is not supplied.
-    if (!options_.callback) {
+  // Create a GstreamerRunner with a generic decoding pipeline.
+  GstreamerRunner::Options gstreamer_runner_options;
+  gstreamer_runner_options.appsrc_caps_string = options_.caps_string;
+  gstreamer_runner_options.processing_pipeline_string = kGenericDecodeString;
+  if (options_.callback) {
+    gstreamer_runner_options.receiver_callback =
+        [this](GstreamerBuffer gstreamer_buffer) -> Status {
+      auto raw_image_status_or = ToRawImage(std::move(gstreamer_buffer));
+      options_.callback(std::move(raw_image_status_or));
       return OkStatus();
-    }
-
-    // Otherwise, try to convert the raw image.
-    // Leave the statusor interpretation to the recipient.
-    // TODO: Decide on some special status codes to pause/halt the pipeline.
-    auto raw_image_status_or = ToRawImage(std::move(gstreamer_buffer));
-    options_.callback(std::move(raw_image_status_or));
-    return OkStatus();
-  };
-  gstreamer_runner_->SetReceiver(gstreamer_runner_receiver);
-
-  auto status = gstreamer_runner_->Start();
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-    return UnknownError("Failed to Start() the GstreamerRunner");
+    };
   }
+
+  auto gstreamer_runner_statusor =
+      GstreamerRunner::Create(gstreamer_runner_options);
+  if (!gstreamer_runner_statusor.ok()) {
+    LOG(ERROR) << gstreamer_runner_statusor.status();
+    return UnknownError("Failed to create the GstreamerRunner");
+  }
+  gstreamer_runner_ = std::move(gstreamer_runner_statusor).ValueOrDie();
 
   return OkStatus();
 }
@@ -103,15 +88,11 @@ Status GstreamerRawImageYielder::Feed(const GstreamerBuffer& gstreamer_buffer) {
 
 Status GstreamerRawImageYielder::SignalEOS() {
   eos_signaled_ = true;
-  auto status = gstreamer_runner_->End();
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-    return UnknownError("Failed to End() the GstreamerRunner");
-  }
+  gstreamer_runner_.reset(nullptr);
 
   // Deliver EOS. Ignore any callback errors.
   if (options_.callback) {
-    status = options_.callback(EOSStatus());
+    auto status = options_.callback(EOSStatus());
     if (!status.ok()) {
       LOG(ERROR) << status;
     }

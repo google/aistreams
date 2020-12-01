@@ -26,83 +26,38 @@
 
 namespace aistreams {
 
-// Options for configuring the gstreamer runner.
-struct GstreamerRunnerOptions {
-  // A string that specifies the processing portion of a gstreamer pipeline.
-  //
-  // More specifically, it can be any string that forms a valid gstreamer
-  // pipeline when it substitutes <processing-pipeline-string> in the following
-  // gst-launch command:
-  //
-  // gst-launch appsrc ! <processing-pipeline-string> ! appsink
-  std::string processing_pipeline_string;
-
-  // The string representing the appsrc caps that you intend to feed.
-  std::string appsrc_caps_string;
-};
-
-// This class manages a running gstreamer pipeline and supports an interface to
-// directly input/output in-memory data to/from gstreamer.
+// This class runs an arbitrary gstreamer pipeline.
 //
-// The runner is either in the "Started" or "Ended" state.
-// It begins its lifetime (constructed) in the "Ended" state.
-// It may transition to the "Started" state by calling Start().
-// Similarly, it may transition to the "Ended" state by calling End().
-//
-// You may only set options and callbacks when the runner is "Ended".
-// You may only feed and receive buffers when the runner has "Started".
-//
-// Buffers fed will have their results be completed and delivered in FIFO order.
-// When the runner transitions to "Ended", any processing that are currently
-// in-flight and any un-delivered results will be discarded.
-//
-// Most resources are allocated and initialized when Start() is called. To
-// properly cleanup, you must also call End(). Merely running the destructor
-// will leak resources.
+// It also supports the ability to directly directly feed/fetch in-memory
+// data to/from gstreamer.
 class GstreamerRunner {
  public:
   using ReceiverCallback = std::function<Status(GstreamerBuffer)>;
 
-  // Constructors only set the options.
-  //
-  // The default constructor default initializes GstreamerRunnerOptions.
-  GstreamerRunner();
-  explicit GstreamerRunner(const GstreamerRunnerOptions& options);
+  // Options for configuring the gstreamer runner.
+  struct Options {
+    // REQUIRED: The gstreamer pipeline string to run.
+    //
+    // It is the same string that you would normally feed to gst-launch:
+    // gst-launch <processing-pipeline-string>
+    std::string processing_pipeline_string;
 
-  // Set/reset the runner options.
-  //
-  // This is useful for running a different gstreamer pipeline.
-  // Calls can only succeed if the runner hasn't started.
-  //
-  // The options set do not change across state boundaries unless you explicitly
-  // change it again with another call to this function.
-  Status SetOptions(const GstreamerRunnerOptions& options);
+    // REQUIRED: The caps of the appsrc prepended to the processing pipeline.
+    std::string appsrc_caps_string;
 
-  // Set/reset the callback to receive the processed result.
-  //
-  // This is useful for changing the receiver when the pipeline changes.
-  // Calls can only succeed if the runner hasn't started.
-  //
-  // The callback is initialized to a no-op.
-  //
-  // The callback that is set does not unless you explicitly make another call.
-  Status SetReceiver(const ReceiverCallback&);
-
-  // Start the runner.
-  //
-  // You should call End() when you are done to reclaim the resources.
-  Status Start();
-
-  // Returns true if the runner has started. Otherwise, false.
-  bool IsStarted() const;
+    // OPTIONAL: If non-empty, an appsink will be appended after the main
+    // processing pipeline to deliver the result through the given callback.
+    ReceiverCallback receiver_callback;
+  };
+  static StatusOr<std::unique_ptr<GstreamerRunner>> Create(const Options&);
 
   // Feed a GstreamerBuffer object for processing.
   Status Feed(const GstreamerBuffer&);
 
-  // End the runner.
-  Status End();
-
   // Copy-control members.
+  //
+  // Please use the GstreamerRunner::Create rather than constructors directly.
+  GstreamerRunner();
   ~GstreamerRunner();
   GstreamerRunner(const GstreamerRunner&) = delete;
   GstreamerRunner& operator=(const GstreamerRunner&) = delete;
@@ -110,9 +65,6 @@ class GstreamerRunner {
   GstreamerRunner& operator=(GstreamerRunner&&) = delete;
 
  private:
-  GstreamerRunnerOptions options_;
-  ReceiverCallback receiver_callback_;
-
   class GstreamerRuntimeImpl;
   std::unique_ptr<GstreamerRuntimeImpl> gstreamer_runtime_impl_;
 };
