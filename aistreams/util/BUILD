@@ -53,3 +53,24 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "grpc_status_delegate",
+    srcs = ["grpc_status_delegate.cc"],
+    hdrs = ["grpc_status_delegate.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/port:grpc++",
+        "//aistreams/port:status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "grpc_status_delegate_test",
+    srcs = ["grpc_status_delegate_test.cc"],
+    deps = [
+       ":grpc_status_delegate",
+        "//aistreams/port:gtest_main",
+    ],
+)
