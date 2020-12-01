@@ -21,10 +21,13 @@
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
+#include "aistreams/util/grpc_status_delegate.h"
 
 namespace aistreams {
 
 namespace {
+using ::aistreams::util::MakeStatusFromRpcStatus;
+
 constexpr int kRandomConsumerNameLength = 8;
 constexpr char kRandomConsumerChars[] =
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -204,7 +207,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
 
 Status PacketReceiver::StreamingReceive(Packet* packet) {
   if (!streaming_reader_->Read(packet)) {
-    return UnavailableError("The packet stream has ended");
+    return MakeStatusFromRpcStatus(streaming_reader_->Finish());
   }
   return OkStatus();
 }
