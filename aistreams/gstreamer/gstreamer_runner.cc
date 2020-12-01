@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
 #include "aistreams/gstreamer/gstreamer_utils.h"
 #include "aistreams/port/canonical_errors.h"
@@ -166,40 +167,142 @@ GstFlowReturn on_new_sample_from_sink(
   return GST_FLOW_OK;
 }
 
-Status ValidateRunnerOptions(const GstreamerRunner::Options& options) {
+Status ValidateOptions(const GstreamerRunner::Options& options) {
   if (options.processing_pipeline_string.empty()) {
     return InvalidArgumentError("Given an empty processing pipeline string");
-  }
-  if (options.appsrc_caps_string.empty()) {
-    return InvalidArgumentError("Given an empty appsrc caps string");
   }
   return OkStatus();
 }
 
-}  // namespace
-
-// A class that manages a running Gstreamer pipeline.
-class GstreamerRunner::GstreamerRuntimeImpl {
+// Object that owns and configures a gstreamer pipeline.
+//
+// It supports pipelines of the form:
+// gst-launch [appsrc !] main-processing-pipeline [! appsink]
+//
+// appsrc and appsink are added depending on whether appsrc caps and a callback
+// is provided in Options.
+class GstreamerPipeline {
  public:
-  // Create a fully initialized and running gstreamer pipeline.
-  static StatusOr<std::unique_ptr<GstreamerRuntimeImpl>> Create(
-      const Options& options) {
-    auto status = ValidateRunnerOptions(options);
+  static StatusOr<std::unique_ptr<GstreamerPipeline>> Create(
+      const GstreamerRunner::Options& options) {
+    auto status = ValidateOptions(options);
     if (!status.ok()) {
       LOG(ERROR) << status;
       return InvalidArgumentError(
           "The given GstreamerRunner::Options has errors");
     }
-    auto runtime_impl = std::make_unique<GstreamerRuntimeImpl>(options);
-    AIS_RETURN_IF_ERROR(runtime_impl->Initialize());
-    return runtime_impl;
+    auto gstreamer_pipeline = std::make_unique<GstreamerPipeline>();
+
+    // Create the gst_pipeline.
+    std::vector<std::string> pipeline_elements;
+    if (!options.appsrc_caps_string.empty()) {
+      pipeline_elements.push_back(
+          absl::StrFormat("appsrc name=%s is-live=true", kAppSrcName));
+    }
+
+    if (options.processing_pipeline_string.empty()) {
+      return InvalidArgumentError("Given an empty processing pipeline string");
+    }
+    pipeline_elements.push_back(options.processing_pipeline_string);
+
+    if (options.receiver_callback) {
+      pipeline_elements.push_back(
+          absl::StrFormat("appsink name=%s", kAppSinkName));
+    }
+    std::string pipeline_string = absl::StrJoin(pipeline_elements, " ! ");
+
+    gstreamer_pipeline->gst_pipeline_ =
+        gst_parse_launch(pipeline_string.c_str(), NULL);
+    if (gstreamer_pipeline->gst_pipeline_ == nullptr) {
+      return InvalidArgumentError(
+          absl::StrFormat("Failed to create a gstreamer pipeline using "
+                          "\"%s\". Make sure you've "
+                          "given a valid processing pipeline string",
+                          pipeline_string));
+    }
+
+    // Configure the appsrc.
+    if (!options.appsrc_caps_string.empty()) {
+      gstreamer_pipeline->gst_appsrc_ = gst_bin_get_by_name(
+          GST_BIN(gstreamer_pipeline->gst_pipeline_), kAppSrcName);
+      if (gstreamer_pipeline->gst_appsrc_ == nullptr) {
+        return InternalError("Failed to get a pointer to the appsrc element");
+      }
+      GstCaps* appsrc_caps =
+          gst_caps_from_string(options.appsrc_caps_string.c_str());
+      if (appsrc_caps == nullptr) {
+        return InvalidArgumentError(absl::StrFormat(
+            "Failed to create a GstCaps from \"%s\"; make sure it is a valid "
+            "cap string",
+            options.appsrc_caps_string));
+      }
+      g_object_set(G_OBJECT(gstreamer_pipeline->gst_appsrc_), "caps",
+                   appsrc_caps, NULL);
+      gst_caps_unref(appsrc_caps);
+    }
+
+    // Configure the appsink.
+    if (options.receiver_callback) {
+      gstreamer_pipeline->gst_appsink_ = gst_bin_get_by_name(
+          GST_BIN(gstreamer_pipeline->gst_pipeline_), kAppSinkName);
+      if (gstreamer_pipeline->gst_appsink_ == nullptr) {
+        return InternalError("Failed to get a pointer to the appsink element");
+      }
+      g_object_set(G_OBJECT(gstreamer_pipeline->gst_appsink_), "emit-signals",
+                   TRUE, "sync", FALSE, NULL);
+      g_signal_connect(gstreamer_pipeline->gst_appsink_, "new-sample",
+                       G_CALLBACK(on_new_sample_from_sink),
+                       const_cast<GstreamerRunner::ReceiverCallback*>(
+                           &options.receiver_callback));
+    }
+
+    return gstreamer_pipeline;
   }
+
+  GstElement* gst_pipeline() const { return gst_pipeline_; }
+
+  GstElement* gst_appsrc() const { return gst_appsrc_; }
+
+  GstreamerPipeline() = default;
+  ~GstreamerPipeline() { Cleanup(); }
+  GstreamerPipeline(const GstreamerPipeline&) = delete;
+  GstreamerPipeline& operator=(const GstreamerPipeline&) = delete;
+
+ private:
+  void Cleanup() {
+    if (gst_pipeline_ != nullptr) {
+      gst_object_unref(gst_pipeline_);
+    }
+    if (gst_appsrc_ != nullptr) {
+      gst_object_unref(gst_appsrc_);
+    }
+    if (gst_appsink_ != nullptr) {
+      gst_object_unref(gst_appsink_);
+    }
+  }
+
+  GstElement* gst_pipeline_ = nullptr;
+  GstElement* gst_appsrc_ = nullptr;
+  GstElement* gst_appsink_ = nullptr;
+};
+
+}  // namespace
+
+// -----------------------------------------------------------------------
+// GstreamerRunnerImpl
+
+// A class that manages a running Gstreamer pipeline.
+class GstreamerRunner::GstreamerRunnerImpl {
+ public:
+  // Create a fully initialized and running gstreamer pipeline.
+  static StatusOr<std::unique_ptr<GstreamerRunnerImpl>> Create(
+      const Options& options);
 
   // Feed a GstreamerBuffer into the running pipeline.
   Status Feed(const GstreamerBuffer&);
 
-  GstreamerRuntimeImpl(const Options& options) : options_(options) {}
-  ~GstreamerRuntimeImpl();
+  GstreamerRunnerImpl(const Options& options) : options_(options) {}
+  ~GstreamerRunnerImpl();
 
  private:
   Status Initialize();
@@ -207,57 +310,29 @@ class GstreamerRunner::GstreamerRuntimeImpl {
 
   Options options_;
 
-  GstElement* gst_pipeline_ = nullptr;
-  GstElement* gst_appsrc_ = nullptr;
-  GstElement* gst_appsink_ = nullptr;
-
+  std::unique_ptr<GstreamerPipeline> gstreamer_pipeline_ = nullptr;
   std::unique_ptr<CompletionSignal> completion_signal_ = nullptr;
   std::unique_ptr<GMainLoopManager> glib_loop_manager_ = nullptr;
 };
 
-Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
-  // Create the full gstreamer pipeline.
-  std::string pipeline_string = absl::StrFormat(
-      "appsrc name=%s is-live=true ! %s ! appsink name=%s", kAppSrcName,
-      options_.processing_pipeline_string, kAppSinkName);
-  gst_pipeline_ = gst_parse_launch(pipeline_string.c_str(), NULL);
-  if (gst_pipeline_ == nullptr) {
-    return InvalidArgumentError(absl::StrFormat(
-        "Failed to create a gstreamer pipeline using \"%s\". Make sure you've "
-        "given a valid processing pipeline string",
-        pipeline_string));
-  }
+StatusOr<std::unique_ptr<GstreamerRunner::GstreamerRunnerImpl>>
+GstreamerRunner::GstreamerRunnerImpl::Create(const Options& options) {
+  auto runner_impl = std::make_unique<GstreamerRunnerImpl>(options);
+  AIS_RETURN_IF_ERROR(runner_impl->Initialize());
+  return runner_impl;
+}
 
-  // Setup the appsrc.
-  gst_appsrc_ = gst_bin_get_by_name(GST_BIN(gst_pipeline_), kAppSrcName);
-  if (gst_appsrc_ == nullptr) {
-    return InternalError("Failed to get a pointer to the appsrc element");
+Status GstreamerRunner::GstreamerRunnerImpl::Initialize() {
+  // Create the gstreamer pipeline.
+  auto gstreamer_pipeline_statusor = GstreamerPipeline::Create(options_);
+  if (!gstreamer_pipeline_statusor.ok()) {
+    return gstreamer_pipeline_statusor.status();
   }
-  GstCaps* appsrc_caps =
-      gst_caps_from_string(options_.appsrc_caps_string.c_str());
-  if (appsrc_caps == nullptr) {
-    return InvalidArgumentError(absl::StrFormat(
-        "Failed to create a GstCaps from \"%s\"; make sure it is a valid "
-        "cap string",
-        options_.appsrc_caps_string));
-  }
-  g_object_set(G_OBJECT(gst_appsrc_), "caps", appsrc_caps, NULL);
-  gst_caps_unref(appsrc_caps);
+  gstreamer_pipeline_ = std::move(gstreamer_pipeline_statusor).ValueOrDie();
 
-  // Setup the appsink.
-  gst_appsink_ = gst_bin_get_by_name(GST_BIN(gst_pipeline_), kAppSinkName);
-  if (gst_appsink_ == nullptr) {
-    return InternalError("Failed to get a pointer to the appsink element");
-  }
-  g_object_set(G_OBJECT(gst_appsink_), "emit-signals", TRUE, "sync", FALSE,
-               NULL);
-  g_signal_connect(gst_appsink_, "new-sample",
-                   G_CALLBACK(on_new_sample_from_sink),
-                   &options_.receiver_callback);
-
-  // Observe the pipeline bus.
+  // Create the completion signal to observe the pipeline progress.
   completion_signal_ = std::make_unique<CompletionSignal>();
-  GstBus* bus = gst_element_get_bus(gst_pipeline_);
+  GstBus* bus = gst_element_get_bus(gstreamer_pipeline_->gst_pipeline());
   gst_bus_add_watch(bus, (GstBusFunc)gst_bus_message_callback,
                     completion_signal_.get());
   gst_object_unref(bus);
@@ -265,17 +340,22 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Initialize() {
   // Start the pipeline.
   completion_signal_->Start();
   glib_loop_manager_ = std::make_unique<GMainLoopManager>();
-  gst_element_set_state(gst_pipeline_, GST_STATE_PLAYING);
-
+  gst_element_set_state(gstreamer_pipeline_->gst_pipeline(), GST_STATE_PLAYING);
   return OkStatus();
 }
 
-Status GstreamerRunner::GstreamerRuntimeImpl::Finalize() {
+Status GstreamerRunner::GstreamerRunnerImpl::Finalize() {
   // Allow the pipeline to complete its processing gracefully.
   // Do this by sending it EOS and enforcing a deadline.
   if (!completion_signal_->IsCompleted()) {
-    GstFlowReturn ret;
-    g_signal_emit_by_name(gst_appsrc_, "end-of-stream", &ret);
+    if (gstreamer_pipeline_->gst_appsrc()) {
+      GstFlowReturn ret;
+      g_signal_emit_by_name(gstreamer_pipeline_->gst_appsrc(), "end-of-stream",
+                            &ret);
+    } else {
+      gst_element_send_event(gstreamer_pipeline_->gst_pipeline(),
+                             gst_event_new_eos());
+    }
     if (!completion_signal_->WaitUntilComplete(
             absl::Seconds(kPipelineFinishTimeoutSeconds))) {
       LOG(WARNING) << "The gstreamer pipeline could not complete its cleanup "
@@ -285,30 +365,29 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Finalize() {
                       "dropped results";
     }
   }
-  gst_element_set_state(gst_pipeline_, GST_STATE_NULL);
-
-  // Cleanup.
-  gst_object_unref(gst_appsink_);
-  gst_object_unref(gst_appsrc_);
-  gst_object_unref(gst_pipeline_);
+  gst_element_set_state(gstreamer_pipeline_->gst_pipeline(), GST_STATE_NULL);
 
   return OkStatus();
 }
 
-GstreamerRunner::GstreamerRuntimeImpl::~GstreamerRuntimeImpl() {
+GstreamerRunner::GstreamerRunnerImpl::~GstreamerRunnerImpl() {
   auto status = Finalize();
   if (!status.ok()) {
     LOG(ERROR) << status;
   }
 }
 
-Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
+Status GstreamerRunner::GstreamerRunnerImpl::Feed(
     const GstreamerBuffer& gstreamer_buffer) {
+  if (gstreamer_pipeline_->gst_appsrc() == nullptr) {
+    return InvalidArgumentError("This runner is not configured for Feeding");
+  }
+
   // Check that the given caps agree with those of the pipeline.
   if (gstreamer_buffer.get_caps() != options_.appsrc_caps_string) {
     return InvalidArgumentError(absl::StrFormat(
-        "Feeding an appsrc with caps \"%s\" with a data of caps \"%s\"",
-        options_.appsrc_caps_string, gstreamer_buffer.get_caps()));
+        "Feeding the runner with caps \"%s\" when \"%s\" is expected",
+        gstreamer_buffer.get_caps(), options_.appsrc_caps_string));
   }
 
   // Create a new GstBuffer by copying.
@@ -321,7 +400,8 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
 
   // Feed the buffer.
   GstFlowReturn ret;
-  g_signal_emit_by_name(gst_appsrc_, "push-buffer", buffer, &ret);
+  g_signal_emit_by_name(gstreamer_pipeline_->gst_appsrc(), "push-buffer",
+                        buffer, &ret);
   gst_buffer_unref(buffer);
   if (ret != GST_FLOW_OK) {
     return InternalError("Failed to push a GstBuffer");
@@ -330,7 +410,7 @@ Status GstreamerRunner::GstreamerRuntimeImpl::Feed(
 }
 
 // -----------------------------------------------------------------------
-// Begin GstreamerRunner implementation
+// GstreamerRunner
 
 GstreamerRunner::GstreamerRunner() = default;
 
@@ -347,19 +427,19 @@ StatusOr<std::unique_ptr<GstreamerRunner>> GstreamerRunner::Create(
     return InternalError("Could not initialize GStreamer");
   }
 
-  // Create a GstreamerRuntimeImpl.
-  auto gstreamer_runtime_impl_statusor = GstreamerRuntimeImpl::Create(options);
-  if (!gstreamer_runtime_impl_statusor.ok()) {
-    LOG(ERROR) << gstreamer_runtime_impl_statusor.status();
-    return UnknownError("Failed to create a gstreamer runtime");
+  // Create a GstreamerRunnerImpl.
+  auto gstreamer_runner_impl_statusor = GstreamerRunnerImpl::Create(options);
+  if (!gstreamer_runner_impl_statusor.ok()) {
+    LOG(ERROR) << gstreamer_runner_impl_statusor.status();
+    return UnknownError("Failed to create a gstreamer runner");
   }
-  gstreamer_runner->gstreamer_runtime_impl_ =
-      std::move(gstreamer_runtime_impl_statusor).ValueOrDie();
+  gstreamer_runner->gstreamer_runner_impl_ =
+      std::move(gstreamer_runner_impl_statusor).ValueOrDie();
   return gstreamer_runner;
 }
 
 Status GstreamerRunner::Feed(const GstreamerBuffer& gstreamer_buffer) {
-  Status status = gstreamer_runtime_impl_->Feed(gstreamer_buffer);
+  Status status = gstreamer_runner_impl_->Feed(gstreamer_buffer);
   if (!status.ok()) {
     LOG(ERROR) << status;
     return UnknownError("Failed to Feed the GstreamerRunner");

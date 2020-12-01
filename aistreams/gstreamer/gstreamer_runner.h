@@ -28,8 +28,10 @@ namespace aistreams {
 
 // This class runs an arbitrary gstreamer pipeline.
 //
-// It also supports the ability to directly directly feed/fetch in-memory
+// It also supports the ability to directly feed/fetch in-memory
 // data to/from gstreamer.
+//
+// Please see the GstreamerRunner::Options for how to configure it.
 class GstreamerRunner {
  public:
   using ReceiverCallback = std::function<Status(GstreamerBuffer)>;
@@ -38,11 +40,12 @@ class GstreamerRunner {
   struct Options {
     // REQUIRED: The gstreamer pipeline string to run.
     //
-    // It is the same string that you would normally feed to gst-launch:
+    // This is the same string that you would normally feed to gst-launch:
     // gst-launch <processing-pipeline-string>
     std::string processing_pipeline_string;
 
-    // REQUIRED: The caps of the appsrc prepended to the processing pipeline.
+    // OPTIONAL: If non-empty, an appsrc will be prepended to the processing
+    // pipeline with caps set to this string.
     std::string appsrc_caps_string;
 
     // OPTIONAL: If non-empty, an appsink will be appended after the main
@@ -52,6 +55,8 @@ class GstreamerRunner {
   static StatusOr<std::unique_ptr<GstreamerRunner>> Create(const Options&);
 
   // Feed a GstreamerBuffer object for processing.
+  //
+  // This is available only if you enable it in the Options.
   Status Feed(const GstreamerBuffer&);
 
   // Copy-control members.
@@ -65,8 +70,8 @@ class GstreamerRunner {
   GstreamerRunner& operator=(GstreamerRunner&&) = delete;
 
  private:
-  class GstreamerRuntimeImpl;
-  std::unique_ptr<GstreamerRuntimeImpl> gstreamer_runtime_impl_;
+  class GstreamerRunnerImpl;
+  std::unique_ptr<GstreamerRunnerImpl> gstreamer_runner_impl_;
 };
 
 }  // namespace aistreams
