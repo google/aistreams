@@ -20,6 +20,7 @@
 #include <atomic>
 #include <functional>
 
+#include "absl/time/time.h"
 #include "aistreams/base/types/gstreamer_buffer.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
@@ -52,12 +53,21 @@ class GstreamerRunner {
     // processing pipeline to deliver the result through the given callback.
     ReceiverCallback receiver_callback;
   };
+
+  // Create and run a gstreamer pipeline.
   static StatusOr<std::unique_ptr<GstreamerRunner>> Create(const Options&);
 
   // Feed a GstreamerBuffer object for processing.
   //
   // This is available only if you enable it in the Options.
-  Status Feed(const GstreamerBuffer&);
+  Status Feed(const GstreamerBuffer&) const;
+
+  // Returns true if the pipeline has completed; otherwise, false.
+  bool IsCompleted() const;
+
+  // Blocks until the pipeline has completed or if the timeout expires.
+  // Returns true if the pipeline has completed; otherwise, false.
+  bool WaitUntilCompleted(absl::Duration timeout) const;
 
   // Copy-control members.
   //

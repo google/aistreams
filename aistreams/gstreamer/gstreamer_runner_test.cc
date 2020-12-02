@@ -19,6 +19,7 @@
 #include <string>
 
 #include "aistreams/base/types/gstreamer_buffer.h"
+#include "aistreams/gstreamer/type_utils.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/gtest.h"
 #include "aistreams/port/logging.h"
@@ -160,6 +161,51 @@ TEST(GstreamerRunner, JpegFeederTest) {
   {
     GstreamerBuffer gstreamer_buffer;
     EXPECT_FALSE(pcqueue.TryPop(gstreamer_buffer, absl::Seconds(1)));
+  }
+}
+
+TEST(GstreamerRunner, NoFeedFetchPipelineTest) {
+  {
+    GstreamerRunner::Options options;
+    options.processing_pipeline_string =
+        "videotestsrc num-buffers=50 is-live=true ! "
+        "video/x-raw,format=RGB ! fakesink";
+    auto runner_statusor = GstreamerRunner::Create(options);
+    ASSERT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
+    while (!runner->WaitUntilCompleted(absl::Seconds(1)))
+      ;
+    EXPECT_TRUE(runner->IsCompleted());
+  }
+}
+
+TEST(GstreamerRunner, FetchOnlyPipelineTest) {
+  {
+    ProducerConsumerQueue<RawImage> pcqueue(10);
+    GstreamerRunner::Options options;
+    options.processing_pipeline_string =
+        "videotestsrc num-buffers=7 is-live=true ! "
+        "video/x-raw,format=RGB,height=100,width=100";
+    options.receiver_callback = [&pcqueue](GstreamerBuffer buffer) -> Status {
+      auto raw_image_status_or = ToRawImage(std::move(buffer));
+      if (!raw_image_status_or.ok()) {
+        LOG(ERROR) << raw_image_status_or.status();
+      }
+      pcqueue.Emplace(std::move(raw_image_status_or).ValueOrDie());
+      return OkStatus();
+    };
+    auto runner_statusor = GstreamerRunner::Create(options);
+    ASSERT_TRUE(runner_statusor.ok());
+    auto runner = std::move(runner_statusor).ValueOrDie();
+    while (!runner->WaitUntilCompleted(absl::Seconds(1)))
+      ;
+    EXPECT_TRUE(runner->IsCompleted());
+    EXPECT_EQ(pcqueue.count(), 7);
+    RawImage raw_image;
+    EXPECT_TRUE(pcqueue.TryPop(raw_image, absl::Seconds(1)));
+    EXPECT_EQ(raw_image.height(), 100);
+    EXPECT_EQ(raw_image.width(), 100);
+    EXPECT_EQ(raw_image.channels(), 3);
   }
 }
 

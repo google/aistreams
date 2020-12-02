@@ -20,6 +20,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
         "@gstreamer",
     ],
 )
@@ -30,6 +31,7 @@ cc_test(
     data = ["//testdata:exported_testdata"],
     deps = [
         ":gstreamer_runner",
+        ":type_utils",
         "//aistreams/base/types:gstreamer_buffer",
         "//aistreams/port:gtest_main",
         "//aistreams/port:logging",

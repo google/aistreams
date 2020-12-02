@@ -59,7 +59,7 @@ class CompletionSignal {
     return is_completed_;
   }
 
-  bool WaitUntilComplete(absl::Duration timeout) {
+  bool WaitUntilCompleted(absl::Duration timeout) {
     absl::MutexLock lock(&is_completed_mu_);
     absl::Condition cond(
         +[](bool* is_completed) -> bool { return *is_completed; },
@@ -301,6 +301,12 @@ class GstreamerRunner::GstreamerRunnerImpl {
   // Feed a GstreamerBuffer into the running pipeline.
   Status Feed(const GstreamerBuffer&);
 
+  bool IsCompleted() { return completion_signal_->IsCompleted(); }
+
+  bool WaitUntilCompleted(absl::Duration timeout) const {
+    return completion_signal_->WaitUntilCompleted(timeout);
+  }
+
   GstreamerRunnerImpl(const Options& options) : options_(options) {}
   ~GstreamerRunnerImpl();
 
@@ -356,7 +362,7 @@ Status GstreamerRunner::GstreamerRunnerImpl::Finalize() {
       gst_element_send_event(gstreamer_pipeline_->gst_pipeline(),
                              gst_event_new_eos());
     }
-    if (!completion_signal_->WaitUntilComplete(
+    if (!completion_signal_->WaitUntilCompleted(
             absl::Seconds(kPipelineFinishTimeoutSeconds))) {
       LOG(WARNING) << "The gstreamer pipeline could not complete its cleanup "
                       "executions within the timeout ( "
@@ -379,6 +385,11 @@ GstreamerRunner::GstreamerRunnerImpl::~GstreamerRunnerImpl() {
 
 Status GstreamerRunner::GstreamerRunnerImpl::Feed(
     const GstreamerBuffer& gstreamer_buffer) {
+  if (IsCompleted()) {
+    return FailedPreconditionError(
+        "The runner has already completed. Please Create() it again and retry");
+  }
+  // Check that the pipeline is configured for Feeding.
   if (gstreamer_pipeline_->gst_appsrc() == nullptr) {
     return InvalidArgumentError("This runner is not configured for Feeding");
   }
@@ -438,13 +449,21 @@ StatusOr<std::unique_ptr<GstreamerRunner>> GstreamerRunner::Create(
   return gstreamer_runner;
 }
 
-Status GstreamerRunner::Feed(const GstreamerBuffer& gstreamer_buffer) {
+Status GstreamerRunner::Feed(const GstreamerBuffer& gstreamer_buffer) const {
   Status status = gstreamer_runner_impl_->Feed(gstreamer_buffer);
   if (!status.ok()) {
     LOG(ERROR) << status;
     return UnknownError("Failed to Feed the GstreamerRunner");
   }
   return OkStatus();
+}
+
+bool GstreamerRunner::IsCompleted() const {
+  return gstreamer_runner_impl_->IsCompleted();
+}
+
+bool GstreamerRunner::WaitUntilCompleted(absl::Duration timeout) const {
+  return gstreamer_runner_impl_->WaitUntilCompleted(timeout);
 }
 
 }  // namespace aistreams
