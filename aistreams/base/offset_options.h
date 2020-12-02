@@ -17,20 +17,40 @@
 #ifndef AISTREAMS_BASE_OFFSET_OPTIONS_H_
 #define AISTREAMS_BASE_OFFSET_OPTIONS_H_
 
+#include "absl/time/time.h"
+#include "absl/types/variant.h"
+
 namespace aistreams {
 
 // Options for a receiver to set its offset.
 struct OffsetOptions {
+  // A set of special offset values.
+  enum class SpecialOffset {
+    kOffsetBeginning,
+    kOffsetEnd,
+  };
+
+  // If this holds an `int64_t` value, then the receiver will start receiving
+  // packets from the corresponding offset position; it this holds an
+  // `absl::Time`, then the receiver will start from the latest packet with
+  // timestamp earlier than this value.
+  using PositionType = absl::variant<SpecialOffset, int64_t, absl::Time>;
+
   // Whether the receiver wants to reset the options. If this is false, then
   // values of all the other fields will be ignored.
   bool reset_offset = false;
 
   // Whether the receiver want to start receiving from the latest packet. If
   // this is true, then the value of position will be ignored.
+  // TODO: deprecate this field
   bool from_latest = false;
 
   // The position of the packet that a receiver wants to start receiving from.
+  // TODO: deprecate this field
   int position;
+
+  // The position to start receiving packet from.
+  PositionType offset_position;
 };
 
 }  // namespace aistreams

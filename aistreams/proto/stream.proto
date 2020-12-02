@@ -24,11 +24,37 @@ import "google/protobuf/timestamp.proto";
 message OffsetConfig {
   // The offset position that the consumer wants to set to. The consumer can
   // specify a position in the stream and start consuming from there.
+  // TODO: deprecate this field
   int64 position = 1;
 
   // If this is set true, then the consumer will start consuming from the latest
   // packet in the stream and the value of position will be ignored.
+  // TODO: deprecate this field
   bool from_latest = 2;
+
+  // SpecialOffset is a set of predefined special offset configuration.
+  enum SpecialOffset {
+    OFFSET_BEGINNING = 0;
+    OFFSET_END = 1;
+  }
+
+  oneof config {
+    // The start consuming from the earliest or latest position.
+    SpecialOffset special_offset = 3;
+
+    // The offset position that the consumer wants to set to. The consumer can
+    // specify a position in the stream and start consuming from there. If the
+    // packet for the `seek_position` is not a critical frame, the consumer will
+    // receive the latest critical packet prior to the that in the
+    // `seek_position`.
+    int64 seek_position = 4;
+
+    // The consumer will start consuming from the latest packet that is earlier
+    // than the `seek_time`. If the packet for the `seek_time` is not a critical
+    // frame, the consumer will receive the latest critical packet prior to the
+    // `seek_time`.
+    google.protobuf.Timestamp seek_time = 5;
+  }
 }
 
 // Response message for SendPackets.
@@ -95,26 +121,22 @@ message ReceiveOnePacketResponse {
 
 // Request message for ReplayStreamRequest.
 message ReplayStreamRequest {
-  // To start receiving packets, client has to provide a unique consumer name.
-  // If the consumer name was duplicated, the stream server will reject the request.
-  string consumer_name = 1;
-
   // The seek options that client can specify to seek the stream.
   oneof seek_option {
     // The timestamp that the client wants to start to consume. The consumer
     // specifies the start timestamp and will get the stream of packets from the
     // stream server.
-    google.protobuf.Timestamp seek_time = 2;
+    google.protobuf.Timestamp seek_time = 1;
 
     // The offset that the client wants to start to consume.
-    int64 seek_offset = 3;
+    int64 seek_offset = 2;
   }
 
   // If this value is specified, the stream server will stop the streaming gRPC
   // connection if no new packet is available for a duration longer than the
   // `timeout` here. Otherwise, the stream server will block until a packet is
   // available.
-  google.protobuf.Duration timeout = 4;
+  google.protobuf.Duration timeout = 3;
 }
 
 // This is the server that accepts stream packets.

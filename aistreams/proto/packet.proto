@@ -26,8 +26,10 @@ message ServerMetadata {
 
   // The timestamp at which the stream server receives this packet. This is
   // based on the local clock of on the server side. It is guaranteed to be
-  // monotonically increasing for the packets within each stream; however
-  // this timestamp is not comparable across different streams.
+  // monotonically increasing for the packets within each session; however
+  // this timestamp is not comparable across packets sent to the same stream
+  // different sessions. Session here refers to one individual gRPC streaming
+  // request to the stream server.
   google.protobuf.Timestamp timestamp = 2;
 }
 

@@ -79,7 +79,10 @@ cc_library(
 cc_library(
     name = "offset_options",
     hdrs = ["offset_options.h"],
-    deps = [],
+    deps = [
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
 )
 
 cc_library(

@@ -26,6 +26,7 @@
 namespace aistreams {
 
 namespace {
+using ::aistreams::OffsetConfig;
 using ::aistreams::util::MakeStatusFromRpcStatus;
 
 constexpr int kRandomConsumerNameLength = 8;
@@ -40,6 +41,32 @@ void RandomConsumerName(std::string* s) {
     (*s)[i] = kRandomConsumerChars[rand_i];
   }
   return;
+}
+
+OffsetConfig ToProtoOffsetConfig(
+    const OffsetOptions::PositionType& offset_position) {
+  OffsetConfig proto_offset_config;
+  if (absl::holds_alternative<OffsetOptions::SpecialOffset>(offset_position)) {
+    OffsetOptions::SpecialOffset special_offset =
+        absl::get<OffsetOptions::SpecialOffset>(offset_position);
+    if (special_offset == OffsetOptions::SpecialOffset::kOffsetBeginning) {
+      proto_offset_config.set_special_offset(
+          OffsetConfig_SpecialOffset_OFFSET_BEGINNING);
+    } else if (special_offset == OffsetOptions::SpecialOffset::kOffsetEnd) {
+      proto_offset_config.set_special_offset(
+          OffsetConfig_SpecialOffset_OFFSET_END);
+    }
+  } else if (absl::holds_alternative<int64_t>(offset_position)) {
+    proto_offset_config.set_position(absl::get<int64_t>(offset_position));
+  } else if (absl::holds_alternative<absl::Time>(offset_position)) {
+    absl::Time seek_time = absl::get<absl::Time>(offset_position);
+    proto_offset_config.mutable_seek_time()->set_seconds(
+        absl::ToUnixSeconds(seek_time));
+    proto_offset_config.mutable_seek_time()->set_nanos(absl::ToInt64Nanoseconds(
+        seek_time -
+        absl::FromUnixSeconds(proto_offset_config.seek_time().seconds())));
+  }
+  return proto_offset_config;
 }
 }  // namespace
 
@@ -76,10 +103,8 @@ Status PacketReceiver::Initialize() {
   }
 
   if (options_.offset_options.reset_offset) {
-    streaming_request_.mutable_offset_config()->set_from_latest(
-        options_.offset_options.from_latest);
-    streaming_request_.mutable_offset_config()->set_position(
-        options_.offset_options.position);
+    *streaming_request_.mutable_offset_config() =
+        ToProtoOffsetConfig(options_.offset_options.offset_position);
   }
 
   if (options_.timeout > absl::ZeroDuration() &&
@@ -182,10 +207,8 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
   request.set_consumer_name(options_.receiver_name);
   // Apply the offset options only for the first unary request.
   if (unary_packets_received_ == 0 && options_.offset_options.reset_offset) {
-    request.mutable_offset_config()->set_from_latest(
-        options_.offset_options.from_latest);
-    request.mutable_offset_config()->set_position(
-        options_.offset_options.position);
+    *streaming_request_.mutable_offset_config() =
+        ToProtoOffsetConfig(options_.offset_options.offset_position);
   }
 
   ReceiveOnePacketResponse response;
