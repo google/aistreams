@@ -94,25 +94,26 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
+  ReceivePacketsRequest streaming_request;
   if (options_.receiver_name.empty()) {
     std::string random_receiver_name;
     RandomConsumerName(&random_receiver_name);
-    streaming_request_.set_consumer_name(random_receiver_name);
+    streaming_request.set_consumer_name(random_receiver_name);
   } else {
-    streaming_request_.set_consumer_name(options_.receiver_name);
+    streaming_request.set_consumer_name(options_.receiver_name);
   }
 
   if (options_.offset_options.reset_offset) {
-    *streaming_request_.mutable_offset_config() =
+    *streaming_request.mutable_offset_config() =
         ToProtoOffsetConfig(options_.offset_options.offset_position);
   }
 
   if (options_.timeout > absl::ZeroDuration() &&
       options_.timeout < absl::InfiniteDuration()) {
     absl::Duration timeout = options_.timeout;
-    streaming_request_.mutable_timeout()->set_seconds(
+    streaming_request.mutable_timeout()->set_seconds(
         absl::IDivDuration(timeout, absl::Seconds(1), &timeout));
-    streaming_request_.mutable_timeout()->set_nanos(
+    streaming_request.mutable_timeout()->set_nanos(
         absl::IDivDuration(timeout, absl::Nanoseconds(1), &timeout));
   }
 
@@ -124,7 +125,7 @@ Status PacketReceiver::Initialize() {
     }
     ctx_ = std::move(ctx_status_or).ValueOrDie();
     streaming_reader_ =
-        std::move(stub_->ReceivePackets(ctx_.get(), streaming_request_));
+        std::move(stub_->ReceivePackets(ctx_.get(), streaming_request));
     if (streaming_reader_ == nullptr) {
       return UnknownError("Failed to create a ClientReader for streaming RPC");
     }
@@ -207,7 +208,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
   request.set_consumer_name(options_.receiver_name);
   // Apply the offset options only for the first unary request.
   if (unary_packets_received_ == 0 && options_.offset_options.reset_offset) {
-    *streaming_request_.mutable_offset_config() =
+    *request.mutable_offset_config() =
         ToProtoOffsetConfig(options_.offset_options.offset_position);
   }
 

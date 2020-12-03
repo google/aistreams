@@ -101,9 +101,7 @@ class PacketReceiver {
   std::unique_ptr<StreamChannel> stream_channel_ = nullptr;
   std::unique_ptr<StreamServer::Stub> stub_ = nullptr;
   std::unique_ptr<grpc::ClientContext> ctx_ = nullptr;
-  ReceivePacketsRequest streaming_request_;
   std::unique_ptr<grpc::ClientReader<Packet>> streaming_reader_ = nullptr;
-
   // Number of packets that have been received via the unary endpoint.
   int unary_packets_received_ = 0;
 
