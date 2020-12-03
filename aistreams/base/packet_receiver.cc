@@ -28,6 +28,7 @@ namespace aistreams {
 namespace {
 using ::aistreams::OffsetConfig;
 using ::aistreams::util::MakeStatusFromRpcStatus;
+using ::google::protobuf::Duration;
 
 constexpr int kRandomConsumerNameLength = 8;
 constexpr char kRandomConsumerChars[] =
@@ -68,6 +69,14 @@ OffsetConfig ToProtoOffsetConfig(
   }
   return proto_offset_config;
 }
+
+Duration ToProtoDuration(absl::Duration d) {
+  Duration pd;
+  pd.set_seconds(d / absl::Seconds(1));
+  pd.set_nanos((d - absl::Seconds(pd.seconds())) / absl::Nanoseconds(1));
+  return pd;
+}
+
 }  // namespace
 
 PacketReceiver::PacketReceiver(const Options& options) : options_(options) {}
@@ -94,6 +103,16 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
+  if (options_.replay_stream) {
+    AIS_RETURN_IF_ERROR(InitializeReplayStream());
+  } else {
+    AIS_RETURN_IF_ERROR(InitializeReceivePacket());
+  }
+
+  return OkStatus();
+}
+
+Status PacketReceiver::InitializeReceivePacket() {
   ReceivePacketsRequest streaming_request;
   if (options_.receiver_name.empty()) {
     std::string random_receiver_name;
@@ -110,11 +129,7 @@ Status PacketReceiver::Initialize() {
 
   if (options_.timeout > absl::ZeroDuration() &&
       options_.timeout < absl::InfiniteDuration()) {
-    absl::Duration timeout = options_.timeout;
-    streaming_request.mutable_timeout()->set_seconds(
-        absl::IDivDuration(timeout, absl::Seconds(1), &timeout));
-    streaming_request.mutable_timeout()->set_nanos(
-        absl::IDivDuration(timeout, absl::Nanoseconds(1), &timeout));
+    *streaming_request.mutable_timeout() = ToProtoDuration(options_.timeout);
   }
 
   if (!options_.enable_unary_rpc) {
@@ -131,6 +146,41 @@ Status PacketReceiver::Initialize() {
     }
   } else {
     LOG(INFO) << "Using unary rpc to receive packets";
+  }
+  return OkStatus();
+}
+
+Status PacketReceiver::InitializeReplayStream() {
+  ReplayStreamRequest replay_stream_request;
+  if (options_.receiver_name.empty()) {
+    std::string random_receiver_name;
+    RandomConsumerName(&random_receiver_name);
+    replay_stream_request.set_consumer_name(random_receiver_name);
+  } else {
+    replay_stream_request.set_consumer_name(options_.receiver_name);
+  }
+
+  if (options_.timeout > absl::ZeroDuration() &&
+      options_.timeout < absl::InfiniteDuration()) {
+    *replay_stream_request.mutable_timeout() =
+        ToProtoDuration(options_.timeout);
+  }
+
+  if (options_.offset_options.reset_offset) {
+    *replay_stream_request.mutable_offset_config() =
+        ToProtoOffsetConfig(options_.offset_options.offset_position);
+  }
+
+  auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
+  if (!ctx_status_or.ok()) {
+    LOG(ERROR) << ctx_status_or.status();
+    return InternalError("Failed to create a grpc client context");
+  }
+  ctx_ = std::move(ctx_status_or).ValueOrDie();
+  streaming_reader_ =
+      std::move(stub_->ReplayStream(ctx_.get(), replay_stream_request));
+  if (streaming_reader_ == nullptr) {
+    return UnknownError("Failed to create a ClientReader for streaming RPC");
   }
   return OkStatus();
 }

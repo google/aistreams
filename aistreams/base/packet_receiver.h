@@ -71,6 +71,9 @@ class PacketReceiver {
     // longer than the `timeout`, then the `Receive` method call will be
     // terminated.
     absl::Duration timeout = absl::InfiniteDuration();
+
+    // Set this true to replay stream.
+    bool replay_stream = false;
   };
 
   // Creates and initializes an instance that is ready for use.
@@ -106,6 +109,8 @@ class PacketReceiver {
   int unary_packets_received_ = 0;
 
   Status Initialize();
+  Status InitializeReceivePacket();
+  Status InitializeReplayStream();
   Status StreamingReceive(Packet*);
   Status StreamingSubscribe(const PacketCallback&);
   Status UnaryReceive(Packet*);
