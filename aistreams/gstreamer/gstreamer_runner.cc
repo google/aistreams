@@ -196,8 +196,10 @@ class GstreamerPipeline {
     // Create the gst_pipeline.
     std::vector<std::string> pipeline_elements;
     if (!options.appsrc_caps_string.empty()) {
-      pipeline_elements.push_back(
-          absl::StrFormat("appsrc name=%s is-live=true", kAppSrcName));
+      // TODO: might be useful to have an option to configure this string.
+      pipeline_elements.push_back(absl::StrFormat(
+          "appsrc name=%s is-live=true do-timestamp=true format=3",
+          kAppSrcName));
     }
 
     if (options.processing_pipeline_string.empty()) {
