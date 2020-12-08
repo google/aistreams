@@ -88,6 +88,26 @@ cc_test(
 )
 
 cc_library(
+    name = "gstreamer_video_writer",
+    srcs = [
+        "gstreamer_video_writer.cc",
+    ],
+    hdrs = [
+        "gstreamer_video_writer.h",
+    ],
+    deps = [
+        ":gstreamer_runner",
+        ":type_utils",
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
     name = "gstreamer_utils",
     srcs = [
         "gstreamer_utils.cc",
