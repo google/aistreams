@@ -40,8 +40,8 @@ struct SslOptions {
 // Options to configure a RPCs.
 struct RpcOptions {
   // The timeout for a call. Set a positive value to timeout. By default its
-  // value is -1, and won't be used for RPC calls.
-  absl::Duration timeout = absl::Minutes(-1);
+  // value is infinite long, and won't be used for RPC calls.
+  absl::Duration timeout = absl::InfiniteDuration();
 
   // If true, then block until the underlying communication channel
   // becomes ready instead of failing fast.

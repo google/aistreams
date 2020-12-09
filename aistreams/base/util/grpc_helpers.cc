@@ -84,7 +84,8 @@ std::shared_ptr<grpc::Channel> CreateGrpcChannel(
 Status FillGrpcClientContext(const RpcOptions &options,
                              grpc::ClientContext *ctx) {
   ctx->set_wait_for_ready(options.wait_for_ready);
-  if (options.timeout > absl::ZeroDuration()) {
+  if (options.timeout > absl::ZeroDuration() &&
+      options.timeout < absl::InfiniteDuration()) {
     ctx->set_deadline(ToChronoTime(absl::Now() + options.timeout));
   }
   return OkStatus();

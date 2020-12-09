@@ -35,13 +35,15 @@ constexpr char kRandomConsumerChars[] =
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 void RandomConsumerName(std::string* s) {
+  if (s == nullptr) {
+    return;
+  }
   thread_local static absl::BitGen bitgen;
   s->resize(kRandomConsumerNameLength);
   for (int i = 0; i < kRandomConsumerNameLength; ++i) {
     size_t rand_i = absl::Uniform(bitgen, 0u, sizeof(kRandomConsumerChars) - 2);
     (*s)[i] = kRandomConsumerChars[rand_i];
   }
-  return;
 }
 
 OffsetConfig ToProtoOffsetConfig(
@@ -58,7 +60,7 @@ OffsetConfig ToProtoOffsetConfig(
           OffsetConfig_SpecialOffset_OFFSET_END);
     }
   } else if (absl::holds_alternative<int64_t>(offset_position)) {
-    proto_offset_config.set_position(absl::get<int64_t>(offset_position));
+    proto_offset_config.set_seek_position(absl::get<int64_t>(offset_position));
   } else if (absl::holds_alternative<absl::Time>(offset_position)) {
     absl::Time seek_time = absl::get<absl::Time>(offset_position);
     proto_offset_config.mutable_seek_time()->set_seconds(
@@ -89,7 +91,8 @@ Status PacketReceiver::Initialize() {
   if (options_.enable_unary_rpc && options_.timeout > absl::ZeroDuration() &&
       options_.timeout < absl::InfiniteDuration()) {
     stream_channel_options.connection_options.rpc_options.timeout =
-        options_.timeout;
+        std::min(stream_channel_options.connection_options.rpc_options.timeout,
+                 options_.timeout);
   }
   auto stream_channel_status_or = StreamChannel::Create(stream_channel_options);
   if (!stream_channel_status_or.ok()) {
@@ -105,7 +108,7 @@ Status PacketReceiver::Initialize() {
 
   if (options_.replay_stream) {
     AIS_RETURN_IF_ERROR(InitializeReplayStream());
-  } else {
+  } else if (!options_.enable_unary_rpc) {
     AIS_RETURN_IF_ERROR(InitializeReceivePacket());
   }
 
@@ -115,9 +118,7 @@ Status PacketReceiver::Initialize() {
 Status PacketReceiver::InitializeReceivePacket() {
   ReceivePacketsRequest streaming_request;
   if (options_.receiver_name.empty()) {
-    std::string random_receiver_name;
-    RandomConsumerName(&random_receiver_name);
-    streaming_request.set_consumer_name(random_receiver_name);
+    RandomConsumerName(streaming_request.mutable_consumer_name());
   } else {
     streaming_request.set_consumer_name(options_.receiver_name);
   }
@@ -132,20 +133,15 @@ Status PacketReceiver::InitializeReceivePacket() {
     *streaming_request.mutable_timeout() = ToProtoDuration(options_.timeout);
   }
 
-  if (!options_.enable_unary_rpc) {
-    auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
-    if (!ctx_status_or.ok()) {
-      LOG(ERROR) << ctx_status_or.status();
-      return InternalError("Failed to create a grpc client context");
-    }
-    ctx_ = std::move(ctx_status_or).ValueOrDie();
-    streaming_reader_ =
-        std::move(stub_->ReceivePackets(ctx_.get(), streaming_request));
-    if (streaming_reader_ == nullptr) {
-      return UnknownError("Failed to create a ClientReader for streaming RPC");
-    }
-  } else {
-    LOG(INFO) << "Using unary rpc to receive packets";
+  auto ctx_status_or = stream_channel_->MakeClientContext();
+  if (!ctx_status_or.ok()) {
+    LOG(ERROR) << ctx_status_or.status();
+    return InternalError("Failed to create a grpc client context");
+  }
+  ctx_ = std::move(ctx_status_or).ValueOrDie();
+  streaming_reader_ = stub_->ReceivePackets(ctx_.get(), streaming_request);
+  if (streaming_reader_ == nullptr) {
+    return UnknownError("Failed to create a ClientReader for streaming RPC");
   }
   return OkStatus();
 }
@@ -153,9 +149,7 @@ Status PacketReceiver::InitializeReceivePacket() {
 Status PacketReceiver::InitializeReplayStream() {
   ReplayStreamRequest replay_stream_request;
   if (options_.receiver_name.empty()) {
-    std::string random_receiver_name;
-    RandomConsumerName(&random_receiver_name);
-    replay_stream_request.set_consumer_name(random_receiver_name);
+    RandomConsumerName(replay_stream_request.mutable_consumer_name());
   } else {
     replay_stream_request.set_consumer_name(options_.receiver_name);
   }
@@ -171,14 +165,13 @@ Status PacketReceiver::InitializeReplayStream() {
         ToProtoOffsetConfig(options_.offset_options.offset_position);
   }
 
-  auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
+  auto ctx_status_or = stream_channel_->MakeClientContext();
   if (!ctx_status_or.ok()) {
     LOG(ERROR) << ctx_status_or.status();
     return InternalError("Failed to create a grpc client context");
   }
   ctx_ = std::move(ctx_status_or).ValueOrDie();
-  streaming_reader_ =
-      std::move(stub_->ReplayStream(ctx_.get(), replay_stream_request));
+  streaming_reader_ = stub_->ReplayStream(ctx_.get(), replay_stream_request);
   if (streaming_reader_ == nullptr) {
     return UnknownError("Failed to create a ClientReader for streaming RPC");
   }
@@ -192,36 +185,10 @@ StatusOr<std::unique_ptr<PacketReceiver>> PacketReceiver::Create(
   return packet_receiver;
 }
 
-Status PacketReceiver::UnarySubscribe(const PacketCallback& callback) {
-  while (true) {
-    Packet packet;
-    Status rpc_status = UnaryReceive(&packet);
-    if (!rpc_status.ok()) {
-      LOG(ERROR) << "Unary rpc returned non-ok status: "
-                 << rpc_status.message();
-    } else {
-      Status s = callback(std::move(packet));
-      if (!s.ok()) {
-        if (IsCancelled(s)) {
-          LOG(INFO) << "The subscriber has requested to cancel";
-          break;
-        } else {
-          LOG(ERROR) << "PacketCallback returned non-ok status: "
-                     << s.message();
-        }
-      }
-    }
-
-    if (options_.unary_rpc_poll_interval > absl::ZeroDuration()) {
-      absl::SleepFor(options_.unary_rpc_poll_interval);
-    }
-  }
-  return OkStatus();
-}
-
-Status PacketReceiver::StreamingSubscribe(const PacketCallback& callback) {
+Status PacketReceiver::Subscribe(const PacketCallback& callback) {
   Packet packet;
-  while (streaming_reader_->Read(&packet)) {
+  while (true) {
+    AIS_RETURN_IF_ERROR(Receive(&packet));
     Status s = callback(std::move(packet));
     if (!s.ok()) {
       if (IsCancelled(s)) {
@@ -231,21 +198,19 @@ Status PacketReceiver::StreamingSubscribe(const PacketCallback& callback) {
         LOG(ERROR) << "PacketCallback returned non-ok status: " << s.message();
       }
     }
-  }
-  return OkStatus();
-}
 
-Status PacketReceiver::Subscribe(const PacketCallback& callback) {
-  if (streaming_reader_ == nullptr) {
-    return UnarySubscribe(callback);
-  } else {
-    return StreamingSubscribe(callback);
+    if (options_.enable_unary_rpc &&
+        options_.unary_rpc_poll_interval > absl::ZeroDuration()) {
+      absl::SleepFor(options_.unary_rpc_poll_interval);
+    }
   }
+
+  return OkStatus();
 }
 
 Status PacketReceiver::UnaryReceive(Packet* packet) {
   // Create a client context.
-  auto ctx_status_or = std::move(stream_channel_->MakeClientContext());
+  auto ctx_status_or = stream_channel_->MakeClientContext();
   if (!ctx_status_or.ok()) {
     LOG(ERROR) << ctx_status_or.status();
     return InternalError("Failed to create a grpc client context");
@@ -267,7 +232,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
       stub_->ReceiveOnePacket(ctx_.get(), request, &response);
   if (!grpc_status.ok()) {
     LOG(ERROR) << grpc_status.error_message();
-    return UnknownError("Encountered error calling ReceiveOnePacket RPC");
+    return MakeStatusFromRpcStatus(grpc_status);
   }
   ++unary_packets_received_;
 

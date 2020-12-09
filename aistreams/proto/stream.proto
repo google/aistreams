@@ -22,16 +22,6 @@ import "google/protobuf/timestamp.proto";
 
 // Configuration used by consumers to reset its offset.
 message OffsetConfig {
-  // The offset position that the consumer wants to set to. The consumer can
-  // specify a position in the stream and start consuming from there.
-  // TODO: deprecate this field
-  int64 position = 1;
-
-  // If this is set true, then the consumer will start consuming from the latest
-  // packet in the stream and the value of position will be ignored.
-  // TODO: deprecate this field
-  bool from_latest = 2;
-
   // SpecialOffset is a set of predefined special offset configuration.
   enum SpecialOffset {
     OFFSET_BEGINNING = 0;
@@ -40,20 +30,20 @@ message OffsetConfig {
 
   oneof config {
     // The start consuming from the earliest or latest position.
-    SpecialOffset special_offset = 3;
+    SpecialOffset special_offset = 1;
 
     // The offset position that the consumer wants to set to. The consumer can
     // specify a position in the stream and start consuming from there. If the
     // packet for the `seek_position` is not a critical frame, the consumer will
     // receive the latest critical packet prior to the that in the
     // `seek_position`.
-    int64 seek_position = 4;
+    int64 seek_position = 2;
 
     // The consumer will start consuming from the latest packet that is earlier
     // than the `seek_time`. If the packet for the `seek_time` is not a critical
     // frame, the consumer will receive the latest critical packet prior to the
     // `seek_time`.
-    google.protobuf.Timestamp seek_time = 5;
+    google.protobuf.Timestamp seek_time = 3;
   }
 }
 
@@ -166,6 +156,6 @@ service StreamServer {
   rpc ReceiveOnePacket(ReceiveOnePacketRequest)
       returns (ReceiveOnePacketResponse) {}
 
-  // Replay packets in the stream from cold storage.
+  // Replay packets in the stream.
   rpc ReplayStream(ReplayStreamRequest) returns (stream Packet) {}
 }

@@ -40,15 +40,6 @@ struct OffsetOptions {
   // values of all the other fields will be ignored.
   bool reset_offset = false;
 
-  // Whether the receiver want to start receiving from the latest packet. If
-  // this is true, then the value of position will be ignored.
-  // TODO: deprecate this field
-  bool from_latest = false;
-
-  // The position of the packet that a receiver wants to start receiving from.
-  // TODO: deprecate this field
-  int position;
-
   // The position to start receiving packet from.
   PositionType offset_position;
 };

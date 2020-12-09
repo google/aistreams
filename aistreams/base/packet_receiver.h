@@ -112,9 +112,7 @@ class PacketReceiver {
   Status InitializeReceivePacket();
   Status InitializeReplayStream();
   Status StreamingReceive(Packet*);
-  Status StreamingSubscribe(const PacketCallback&);
   Status UnaryReceive(Packet*);
-  Status UnarySubscribe(const PacketCallback&);
 };
 
 }  // namespace aistreams
