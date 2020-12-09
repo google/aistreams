@@ -60,7 +60,7 @@ TEST(GstreamerRawImageYielder, JpegSequenceTest) {
   auto callback = [&pcqueue](StatusOr<RawImage> raw_image_statusor) -> Status {
     if (!raw_image_statusor.ok()) {
       auto status = raw_image_statusor.status();
-      if (status.code() == StatusCode::kResourceExhausted) {
+      if (status.code() == StatusCode::kNotFound) {
         pcqueue.TryEmplace(RawImage());
       } else {
         LOG(ERROR) << status;
@@ -150,7 +150,7 @@ TEST(GstreamerRawImageYielder, DtorSignalEOSTest) {
         [&pcqueue](StatusOr<RawImage> raw_image_statusor) -> Status {
       if (!raw_image_statusor.ok()) {
         auto status = raw_image_statusor.status();
-        if (status.code() == StatusCode::kResourceExhausted) {
+        if (status.code() == StatusCode::kNotFound) {
           pcqueue.TryEmplace(RawImage());
         } else {
           LOG(ERROR) << status;

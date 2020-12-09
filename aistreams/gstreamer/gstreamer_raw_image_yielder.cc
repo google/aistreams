@@ -28,9 +28,7 @@ namespace {
 constexpr char kGenericDecodeString[] =
     "decodebin ! videoconvert ! video/x-raw,format=RGB";
 
-Status EOSStatus() {
-  return Status(StatusCode::kResourceExhausted, "Reached EOS");
-}
+Status EOSStatus() { return Status(StatusCode::kNotFound, "Reached EOS"); }
 
 }  // namespace
 

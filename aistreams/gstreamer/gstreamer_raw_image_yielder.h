@@ -47,7 +47,7 @@ class GstreamerRawImageYielder {
   // The argument passed to the callback can contain a RawImage when no special
   // conditions or errors have been encountered upstream or during decoding.
   // Below are error codes that require special handling:
-  // `kResourceExhausted`: This indicates that EOS (end-of-stream) is
+  // `kNotFound`: This indicates that EOS (end-of-stream) is
   //                       reached. You should quit gracefully.
   using Callback = std::function<Status(StatusOr<RawImage>)>;
   struct Options {
