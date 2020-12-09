@@ -108,6 +108,31 @@ cc_library(
 )
 
 cc_library(
+    name = "gstreamer_video_exporter",
+    srcs = [
+        "gstreamer_video_exporter.cc",
+    ],
+    hdrs = [
+        "gstreamer_video_exporter.h",
+    ],
+    deps = [
+        ":gstreamer_raw_image_yielder",
+        ":gstreamer_video_writer",
+        ":type_utils",
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/base/util:packet_utils",
+        "//aistreams/base/wrappers:receivers",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/util:producer_consumer_queue",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_library(
     name = "gstreamer_utils",
     srcs = [
         "gstreamer_utils.cc",
