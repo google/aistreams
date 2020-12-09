@@ -41,6 +41,11 @@ StatusOr<RawImage> ToRawImage(GstreamerBuffer gstreamer_buffer);
 // indicate the reason if the conversion fails.
 StatusOr<GstreamerBuffer> ToGstreamerBuffer(Packet packet);
 
+// Convert the given RawImage into a GstreamerBuffer.
+//
+// You should pass an rvalue for `raw_image` if possible.
+StatusOr<GstreamerBuffer> ToGstreamerBuffer(RawImage raw_image);
+
 }  // namespace aistreams
 
 #endif  // AISTREAMS_GSTREAMER_TYPE_UTILS_H_

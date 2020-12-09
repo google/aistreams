@@ -212,14 +212,7 @@ StatusOr<GstreamerBuffer> RawImagePacketToGstreamerBuffer(Packet p) {
         "Failed to adapt supposedly a RawImage packet into a RawImage");
   }
   RawImage raw_image = std::move(packet_as).ValueOrDie();
-
-  if (raw_image.format() != RAW_IMAGE_FORMAT_SRGB) {
-    return UnimplementedError(absl::StrFormat(
-        "We currently do not support raw images with your given format (%s)",
-        RawImageFormat_Name(raw_image.format())));
-  }
-
-  return RgbRawImageToGstreamerBuffer(std::move(raw_image));
+  return ToGstreamerBuffer(std::move(raw_image));
 }
 
 }  // namespace
@@ -257,6 +250,15 @@ StatusOr<GstreamerBuffer> ToGstreamerBuffer(Packet p) {
                           "converted into a GstreamerBuffer",
                           PacketTypeId_Name(packet_type_id)));
   }
+}
+
+StatusOr<GstreamerBuffer> ToGstreamerBuffer(RawImage raw_image) {
+  if (raw_image.format() != RAW_IMAGE_FORMAT_SRGB) {
+    return UnimplementedError(absl::StrFormat(
+        "We currently do not support raw images with your given format (%s)",
+        RawImageFormat_Name(raw_image.format())));
+  }
+  return RgbRawImageToGstreamerBuffer(std::move(raw_image));
 }
 
 }  // namespace aistreams
