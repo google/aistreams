@@ -160,3 +160,15 @@ cc_library(
         "@com_google_googleapis//google/partner/aistreams/v1alpha1:aistreams_cc_grpc",
     ],
 )
+
+cc_test(
+    name = "packet_receiver_test",
+    srcs = [
+        "packet_receiver_test.cc",
+    ],
+    deps = [
+        ":packet_receiver",
+        "//aistreams/mocks:mock_stream_service",
+        "//aistreams/util:constants",
+    ],
+)
