@@ -48,6 +48,9 @@ struct ReceiverOptions {
   //
   // Non-positive values will resolve to a pre-configured default.
   int buffer_capacity = 0;
+
+  // Options to replay stream. Set this true to replay stream.
+  bool replay_stream = false;
 };
 
 // Create a ReceiverQueue containing packets arriving from the server.

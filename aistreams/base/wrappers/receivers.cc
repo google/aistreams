@@ -59,6 +59,7 @@ Status MakePacketReceiverQueue(const ReceiverOptions& options,
   packet_receiver_options.stream_name = options.stream_name;
   packet_receiver_options.receiver_name = options.receiver_name;
   packet_receiver_options.offset_options = options.offset_options;
+  packet_receiver_options.replay_stream = options.replay_stream;
   auto packet_receiver_statusor =
       PacketReceiver::Create(packet_receiver_options);
   if (!packet_receiver_statusor.ok()) {
