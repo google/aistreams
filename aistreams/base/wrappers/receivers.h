@@ -22,6 +22,7 @@
 #include "aistreams/base/connection_options.h"
 #include "aistreams/base/offset_options.h"
 #include "aistreams/base/packet.h"
+#include "aistreams/base/packet_receiver.h"
 #include "aistreams/base/wrappers/receiver_queue.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
@@ -49,8 +50,8 @@ struct ReceiverOptions {
   // Non-positive values will resolve to a pre-configured default.
   int buffer_capacity = 0;
 
-  // Options to replay stream. Set this true to replay stream.
-  bool replay_stream = false;
+  // The receiver mode.
+  ReceiverMode receiver_mode = ReceiverMode::StreamingReceive;
 };
 
 // Create a ReceiverQueue containing packets arriving from the server.

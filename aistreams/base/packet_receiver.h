@@ -30,6 +30,16 @@
 
 namespace aistreams {
 
+enum class ReceiverMode {
+  StreamingReceive,
+  UnaryReceive,
+  Replay,
+  // Receiver will switch to replay mode if receiver returns NOT_FOUND from
+  // streaming receive mode.
+  // TODO: implement auto mode.
+  Auto,
+};
+
 // The callback type used to subscribe to incoming packets.
 //
 // Return a kCancelled Status to shut down.
@@ -61,6 +71,7 @@ class PacketReceiver {
     //
     // This is mainly useful for approximate profiling/packet tracing with
     // istio. It is not particularly efficient.
+    // TODO: deprecate
     bool enable_unary_rpc = false;
 
     // The interval between unary rpc polls.
@@ -73,7 +84,11 @@ class PacketReceiver {
     absl::Duration timeout = absl::InfiniteDuration();
 
     // Set this true to replay stream.
+    // TODO: deprecate
     bool replay_stream = false;
+
+    // The receiver mode. Default receiver mode is the streaming receiver.
+    ReceiverMode receiver_mode = ReceiverMode::StreamingReceive;
   };
 
   // Creates and initializes an instance that is ready for use.

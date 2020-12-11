@@ -22,7 +22,6 @@
 #include "absl/strings/str_format.h"
 #include "absl/time/time.h"
 #include "aistreams/base/connection_options.h"
-#include "aistreams/base/packet_receiver.h"
 #include "aistreams/base/wrappers/receiver_queue.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
@@ -59,7 +58,7 @@ Status MakePacketReceiverQueue(const ReceiverOptions& options,
   packet_receiver_options.stream_name = options.stream_name;
   packet_receiver_options.receiver_name = options.receiver_name;
   packet_receiver_options.offset_options = options.offset_options;
-  packet_receiver_options.replay_stream = options.replay_stream;
+  packet_receiver_options.receiver_mode = options.receiver_mode;
   auto packet_receiver_statusor =
       PacketReceiver::Create(packet_receiver_options);
   if (!packet_receiver_statusor.ok()) {

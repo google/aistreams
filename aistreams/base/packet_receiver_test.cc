@@ -100,8 +100,7 @@ TEST_F(PacketReceiverTest, UnaryReceive) {
   options.offset_options.offset_position =
       OffsetOptions::SpecialOffset::kOffsetBeginning;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = true;
-  options.replay_stream = false;
+  options.receiver_mode = ReceiverMode::UnaryReceive;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
   auto packet_receiver_status_or = PacketReceiver::Create(options);
@@ -139,8 +138,7 @@ TEST_F(PacketReceiverTest, UnaryReceiveWithoutOffset) {
   options.stream_name = kStreamName;
   options.offset_options.reset_offset = false;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = true;
-  options.replay_stream = false;
+  options.receiver_mode = ReceiverMode::UnaryReceive;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
   auto packet_receiver_status_or = PacketReceiver::Create(options);
@@ -182,8 +180,7 @@ TEST_F(PacketReceiverTest, StreamingReceive) {
   options.offset_options.reset_offset = true;
   options.offset_options.offset_position = kSeekOffset;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = false;
-  options.replay_stream = false;
+  options.receiver_mode = ReceiverMode::StreamingReceive;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
   auto packet_receiver_status_or = PacketReceiver::Create(options);
@@ -227,8 +224,7 @@ TEST_F(PacketReceiverTest, ReplayStream) {
   options.offset_options.reset_offset = true;
   options.offset_options.offset_position = kSeekTime;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = false;
-  options.replay_stream = true;
+  options.receiver_mode = ReceiverMode::Replay;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
   auto packet_receiver_status_or = PacketReceiver::Create(options);
@@ -260,8 +256,7 @@ TEST_F(PacketReceiverTest, Subscribe) {
   options.offset_options.reset_offset = true;
   options.offset_options.offset_position = kSeekOffset;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = false;
-  options.replay_stream = false;
+  options.receiver_mode = ReceiverMode::StreamingReceive;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
 
@@ -270,7 +265,7 @@ TEST_F(PacketReceiverTest, Subscribe) {
   auto packet_receiver = std::move(packet_receiver_status_or).ValueOrDie();
   int index = 0;
   EXPECT_OK(packet_receiver->Subscribe([&index, &packets](Packet packet) {
-    if (index < packets.size() - 1) {
+    if (index < static_cast<int>(packets.size()) - 1) {
       EXPECT_EQ(packets[index++].ShortDebugString(), packet.ShortDebugString());
       return OkStatus();
     }
@@ -298,8 +293,7 @@ TEST_F(PacketReceiverTest, SubscribeWithErrorReceivingPacket) {
   options.offset_options.reset_offset = true;
   options.offset_options.offset_position = kSeekOffset;
   options.timeout = kTimeout;
-  options.enable_unary_rpc = false;
-  options.replay_stream = false;
+  options.receiver_mode = ReceiverMode::StreamingReceive;
   options.connection_options.target_address = kStreamServerAddress;
   options.connection_options.ssl_options.use_insecure_channel = true;
 
@@ -310,7 +304,7 @@ TEST_F(PacketReceiverTest, SubscribeWithErrorReceivingPacket) {
   EXPECT_EQ(StatusCode::kNotFound,
             packet_receiver
                 ->Subscribe([&index, &packets](Packet packet) {
-                  if (index < packets.size()) {
+                  if (index < static_cast<int>(packets.size())) {
                     EXPECT_EQ(packets[index++].ShortDebugString(),
                               packet.ShortDebugString());
                   }

@@ -40,8 +40,6 @@ ABSL_FLAG(int, timeout_in_sec, 60,
 ABSL_FLAG(int, position_type, -1,
           "The position type. 0 for speciall offset, offset_beginning; 1 for "
           "special offset, offset_end; 2 for offset position; 3 for timestamp");
-// TODO: auto detect replay stream
-ABSL_FLAG(bool, replay_stream, false, "Mode for replaying stream.");
 ABSL_FLAG(int64_t, start_offset, -1, "The start offset to seek to.");
 ABSL_FLAG(int64_t, end_offset, -1, "The end offset to seek to.");
 ABSL_FLAG(absl::Time, start_timestamp, absl::InfinitePast(),
@@ -66,11 +64,6 @@ Status RunPrinter() {
     offset_option.offset_position =
         position_type == 0 ? OffsetOptions::SpecialOffset::kOffsetBeginning
                            : OffsetOptions::SpecialOffset::kOffsetEnd;
-    if (position_type == 1 && absl::GetFlag(FLAGS_replay_stream)) {
-      return InvalidArgumentError(
-          "special offset OffsetEnd is not supported for replaying stream.");
-    }
-
     int64_t num_packets = absl::GetFlag(FLAGS_num_packets);
     if (num_packets <= 0) {
       return InvalidArgumentError("num_packets should be > 0");
@@ -120,7 +113,7 @@ Status RunPrinter() {
       absl::GetFlag(FLAGS_authenticate_with_google);
   receiver_options.connection_options = connection_options;
   receiver_options.stream_name = absl::GetFlag(FLAGS_stream_name);
-  receiver_options.replay_stream = absl::GetFlag(FLAGS_replay_stream);
+  receiver_options.receiver_mode = ReceiverMode::Replay;
   receiver_options.offset_options = offset_option;
 
   // Create a receiver queue to the stream.

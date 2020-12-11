@@ -88,7 +88,8 @@ Status PacketReceiver::Initialize() {
   stream_channel_options.connection_options = options_.connection_options;
   stream_channel_options.stream_name = options_.stream_name;
   // Set the timeout in connection options for unary-styled packet receiving.
-  if (options_.enable_unary_rpc && options_.timeout > absl::ZeroDuration() &&
+  if (options_.receiver_mode == ReceiverMode::UnaryReceive &&
+      options_.timeout > absl::ZeroDuration() &&
       options_.timeout < absl::InfiniteDuration()) {
     stream_channel_options.connection_options.rpc_options.timeout =
         std::min(stream_channel_options.connection_options.rpc_options.timeout,
@@ -106,9 +107,9 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
-  if (options_.replay_stream) {
+  if (options_.receiver_mode == ReceiverMode::Replay) {
     AIS_RETURN_IF_ERROR(InitializeReplayStream());
-  } else if (!options_.enable_unary_rpc) {
+  } else if (options_.receiver_mode != ReceiverMode::UnaryReceive) {
     AIS_RETURN_IF_ERROR(InitializeReceivePacket());
   }
 
@@ -199,7 +200,7 @@ Status PacketReceiver::Subscribe(const PacketCallback& callback) {
       }
     }
 
-    if (options_.enable_unary_rpc &&
+    if (options_.receiver_mode == ReceiverMode::UnaryReceive &&
         options_.unary_rpc_poll_interval > absl::ZeroDuration()) {
       absl::SleepFor(options_.unary_rpc_poll_interval);
     }
