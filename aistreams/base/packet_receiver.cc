@@ -16,12 +16,12 @@
 
 #include <utility>
 
-#include "absl/random/random.h"
 #include "absl/time/clock.h"
 #include "aistreams/port/canonical_errors.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
 #include "aistreams/util/grpc_status_delegate.h"
+#include "aistreams/util/random_string.h"
 
 namespace aistreams {
 
@@ -31,19 +31,9 @@ using ::aistreams::util::MakeStatusFromRpcStatus;
 using ::google::protobuf::Duration;
 
 constexpr int kRandomConsumerNameLength = 8;
-constexpr char kRandomConsumerChars[] =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 void RandomConsumerName(std::string* s) {
-  if (s == nullptr) {
-    return;
-  }
-  thread_local static absl::BitGen bitgen;
-  s->resize(kRandomConsumerNameLength);
-  for (int i = 0; i < kRandomConsumerNameLength; ++i) {
-    size_t rand_i = absl::Uniform(bitgen, 0u, sizeof(kRandomConsumerChars) - 2);
-    (*s)[i] = kRandomConsumerChars[rand_i];
-  }
+  *s = RandomString(kRandomConsumerNameLength);
 }
 
 OffsetConfig ToProtoOffsetConfig(

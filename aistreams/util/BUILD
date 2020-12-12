@@ -100,3 +100,18 @@ cc_test(
         "//aistreams/port:status",
     ],
 )
+
+cc_library(
+    name = "random_string",
+    srcs = [
+        "random_string.cc",
+    ],
+    hdrs = [
+        "random_string.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/port:status",
+        "@com_google_absl//absl/random",
+    ],
+)
