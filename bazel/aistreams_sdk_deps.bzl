@@ -74,6 +74,35 @@ def aistreams_sdk_deps():
         url = "https://github.com/googleapis/googleapis/archive/369e0cd05493fc5fdd7be96c6dc3b141e9dd0c16.tar.gz",
     )
 
+    maybe(
+        http_archive,
+        name = "curl",
+        urls = [
+            "https://curl.haxx.se/download/curl-7.69.1.tar.gz",
+        ],
+        strip_prefix = "curl-7.69.1",
+        sha256 = "01ae0c123dee45b01bbaef94c0bc00ed2aec89cb2ee0fd598e0d302a6b5e0a98",
+        build_file = "@com_github_googleapis_google_cloud_cpp//bazel:curl.BUILD",
+    )
+
+    maybe(
+        http_archive,
+        name = "com_github_googleapis_google_cloud_cpp",
+        sha256 = "33eb349cf5f033704a4299b0ac57e3a8b4973ca92f4491aef822bfeb41e69d27",
+        strip_prefix = "google-cloud-cpp-1.19.0",
+        url = "https://github.com/googleapis/google-cloud-cpp/archive/v1.19.0.tar.gz",
+        patches = [
+            "@//third_party:com_github_googleapis_google_cloud_cpp_patch.diff",
+        ],
+        patch_args = [
+            "-p1",
+        ],
+        repo_mapping = {
+            "@com_github_curl_curl": "@curl",
+            "@com_google_googletest": "@com_github_google_googletest",
+        },
+    )
+
     # This requires gstreamer to be installed on your system.
     # TODO: Ok to start, but consider building from source with bazel.
     maybe(
@@ -111,17 +140,6 @@ def aistreams_sdk_deps():
         repo_mapping = {
             "@com_github_curl": "@curl",
         },
-    )
-
-    maybe(
-        http_archive,
-        name = "curl",
-        build_file = "@com_census_instrumentation_cpp//:bazel/curl.BUILD",
-        strip_prefix = "curl-7.73.0",
-        urls = [
-            "https://github.com/curl/curl/releases/download/curl-7_73_0/curl-7.73.0.zip",
-        ],
-        sha256 = "70918e1678d4fb5fd18c44e8a54d263d74a4bede7c38723e72317b7e74a2a27d",
     )
 
     maybe(

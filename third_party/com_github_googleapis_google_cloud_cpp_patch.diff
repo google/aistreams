@@ -1,0 +1,22 @@
+diff --git a/bazel/curl.BUILD b/bazel/curl.BUILD
+index 853fc5e61..82d472854 100644
+--- a/bazel/curl.BUILD
++++ b/bazel/curl.BUILD
+@@ -124,7 +124,7 @@ cc_library(
+ )
+
+ CURL_WIN_COPTS = [
+-    "/Iexternal/com_github_curl_curl/lib",
++    "/Iexternal/curl/lib",
+     "/DBUILDING_LIBCURL",
+     "/DHAVE_CONFIG_H",
+     "/DCURL_DISABLE_FTP",
+@@ -392,7 +392,7 @@ cc_library(
+     copts = select({
+         ":windows": CURL_WIN_COPTS,
+         "//conditions:default": [
+-            "-Iexternal/com_github_curl_curl/lib",
++            "-Iexternal/curl/lib",
+             "-D_GNU_SOURCE",
+             "-DBUILDING_LIBCURL",
+             "-DHAVE_CONFIG_H",
