@@ -116,18 +116,22 @@ class PacketReceiver {
 
  private:
   Options options_;
+  ReceiverMode current_receiver_mode_;
   std::unique_ptr<StreamChannel> stream_channel_ = nullptr;
   std::unique_ptr<StreamServer::Stub> stub_ = nullptr;
-  std::unique_ptr<grpc::ClientContext> ctx_ = nullptr;
-  std::unique_ptr<grpc::ClientReader<Packet>> streaming_reader_ = nullptr;
+  std::unordered_map<ReceiverMode, std::unique_ptr<grpc::ClientContext>> ctx_;
+  std::unordered_map<ReceiverMode, std::unique_ptr<grpc::ClientReader<Packet>>>
+      streaming_readers_;
   // Number of packets that have been received via the unary endpoint.
   int unary_packets_received_ = 0;
+  bool first_receiving_ = true;
 
   Status Initialize();
   Status InitializeReceivePacket();
   Status InitializeReplayStream();
   Status StreamingReceive(Packet*);
   Status UnaryReceive(Packet*);
+  void DisposeUnusedClientReader();
 };
 
 }  // namespace aistreams

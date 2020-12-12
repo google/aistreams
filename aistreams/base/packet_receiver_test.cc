@@ -313,6 +313,91 @@ TEST_F(PacketReceiverTest, SubscribeWithErrorReceivingPacket) {
                 .code());
 }
 
+TEST_F(PacketReceiverTest, AutoPacketReceiverReceive) {
+  std::vector<Packet> packets = {MakePacket(0), MakePacket(1), MakePacket(2)};
+  EXPECT_CALL(*stream_service_.get(), ReceivePackets(_, _, _))
+      .Times(1)
+      .WillOnce([&](grpc::ServerContext *context,
+                    const ReceivePacketsRequest *request,
+                    grpc::ServerWriter<Packet> *stream) {
+        return ::grpc::Status(::grpc::StatusCode::OUT_OF_RANGE,
+                              "Offset out of range");
+      });
+  EXPECT_CALL(*stream_service_.get(), ReplayStream(_, _, _))
+      .Times(1)
+      .WillOnce([&](grpc::ServerContext *context,
+                    const ReplayStreamRequest *request,
+                    grpc::ServerWriter<Packet> *stream) {
+        for (const auto &packet : packets) {
+          stream->Write(packet);
+        }
+        return ::grpc::Status(::grpc::StatusCode::INTERNAL, "Internal Error");
+      });
+
+  PacketReceiver::Options options;
+  options.receiver_name = kConsumerName;
+  options.stream_name = kStreamName;
+  options.offset_options.reset_offset = true;
+  options.offset_options.offset_position = kSeekOffset;
+  options.timeout = kTimeout;
+  options.receiver_mode = ReceiverMode::Auto;
+  options.connection_options.target_address = kStreamServerAddress;
+  options.connection_options.ssl_options.use_insecure_channel = true;
+
+  auto packet_receiver_status_or = PacketReceiver::Create(options);
+  EXPECT_OK(packet_receiver_status_or);
+  auto packet_receiver = std::move(packet_receiver_status_or).ValueOrDie();
+  int index = 0;
+  EXPECT_EQ(StatusCode::kInternal,
+            packet_receiver
+                ->Subscribe([&index, &packets](Packet packet) {
+                  if (index < static_cast<int>(packets.size())) {
+                    EXPECT_EQ(packets[index++].ShortDebugString(),
+                              packet.ShortDebugString());
+                  }
+                  return OkStatus();
+                })
+                .code());
+}
+
+TEST_F(PacketReceiverTest, AutoPacketReceiverReceivesNoModeSwitch) {
+  std::vector<Packet> packets = {MakePacket(0), MakePacket(1), MakePacket(2)};
+  EXPECT_CALL(*stream_service_.get(), ReceivePackets(_, _, _))
+      .Times(1)
+      .WillOnce([&](grpc::ServerContext *context,
+                    const ReceivePacketsRequest *request,
+                    grpc::ServerWriter<Packet> *stream) {
+        return ::grpc::Status(::grpc::StatusCode::INTERNAL, "Internal Error");
+      });
+  EXPECT_CALL(*stream_service_.get(), ReplayStream(_, _, _))
+      .Times(1)
+      .WillOnce([&](grpc::ServerContext *context,
+                    const ReplayStreamRequest *request,
+                    grpc::ServerWriter<Packet> *stream) {
+        return ::grpc::Status(::grpc::StatusCode::NOT_FOUND, "Not found");
+      });
+
+  PacketReceiver::Options options;
+  options.receiver_name = kConsumerName;
+  options.stream_name = kStreamName;
+  options.offset_options.reset_offset = true;
+  options.offset_options.offset_position = kSeekOffset;
+  options.timeout = kTimeout;
+  options.receiver_mode = ReceiverMode::Auto;
+  options.connection_options.target_address = kStreamServerAddress;
+  options.connection_options.ssl_options.use_insecure_channel = true;
+
+  auto packet_receiver_status_or = PacketReceiver::Create(options);
+  EXPECT_OK(packet_receiver_status_or);
+  auto packet_receiver = std::move(packet_receiver_status_or).ValueOrDie();
+  int index = 0;
+  EXPECT_EQ(
+      StatusCode::kInternal,
+      packet_receiver
+          ->Subscribe([&index, &packets](Packet packet) { return OkStatus(); })
+          .code());
+}
+
 }  // namespace
 
 }  // namespace aistreams

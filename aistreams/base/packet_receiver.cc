@@ -107,9 +107,15 @@ Status PacketReceiver::Initialize() {
     return UnknownError("Failed to create a gRPC stub");
   }
 
-  if (options_.receiver_mode == ReceiverMode::Replay) {
+  if (options_.receiver_mode == ReceiverMode::Auto ||
+      options_.receiver_mode == ReceiverMode::Replay) {
+    current_receiver_mode_ = ReceiverMode::Replay;
     AIS_RETURN_IF_ERROR(InitializeReplayStream());
-  } else if (options_.receiver_mode != ReceiverMode::UnaryReceive) {
+  }
+
+  if (options_.receiver_mode == ReceiverMode::Auto ||
+      options_.receiver_mode == ReceiverMode::StreamingReceive) {
+    current_receiver_mode_ = ReceiverMode::StreamingReceive;
     AIS_RETURN_IF_ERROR(InitializeReceivePacket());
   }
 
@@ -139,9 +145,10 @@ Status PacketReceiver::InitializeReceivePacket() {
     LOG(ERROR) << ctx_status_or.status();
     return InternalError("Failed to create a grpc client context");
   }
-  ctx_ = std::move(ctx_status_or).ValueOrDie();
-  streaming_reader_ = stub_->ReceivePackets(ctx_.get(), streaming_request);
-  if (streaming_reader_ == nullptr) {
+  ctx_[ReceiverMode::StreamingReceive] = std::move(ctx_status_or).ValueOrDie();
+  streaming_readers_[ReceiverMode::StreamingReceive] = stub_->ReceivePackets(
+      ctx_[ReceiverMode::StreamingReceive].get(), streaming_request);
+  if (streaming_readers_[ReceiverMode::StreamingReceive] == nullptr) {
     return UnknownError("Failed to create a ClientReader for streaming RPC");
   }
   return OkStatus();
@@ -171,9 +178,10 @@ Status PacketReceiver::InitializeReplayStream() {
     LOG(ERROR) << ctx_status_or.status();
     return InternalError("Failed to create a grpc client context");
   }
-  ctx_ = std::move(ctx_status_or).ValueOrDie();
-  streaming_reader_ = stub_->ReplayStream(ctx_.get(), replay_stream_request);
-  if (streaming_reader_ == nullptr) {
+  ctx_[ReceiverMode::Replay] = std::move(ctx_status_or).ValueOrDie();
+  streaming_readers_[ReceiverMode::Replay] = stub_->ReplayStream(
+      ctx_[ReceiverMode::Replay].get(), replay_stream_request);
+  if (streaming_readers_[ReceiverMode::Replay] == nullptr) {
     return UnknownError("Failed to create a ClientReader for streaming RPC");
   }
   return OkStatus();
@@ -216,7 +224,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
     LOG(ERROR) << ctx_status_or.status();
     return InternalError("Failed to create a grpc client context");
   }
-  ctx_ = std::move(ctx_status_or).ValueOrDie();
+  auto ctx = std::move(ctx_status_or).ValueOrDie();
 
   // Make the unary rpc.
   ReceiveOnePacketRequest request;
@@ -230,7 +238,7 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
 
   ReceiveOnePacketResponse response;
   grpc::Status grpc_status =
-      stub_->ReceiveOnePacket(ctx_.get(), request, &response);
+      stub_->ReceiveOnePacket(ctx.get(), request, &response);
   if (!grpc_status.ok()) {
     LOG(ERROR) << grpc_status.error_message();
     return MakeStatusFromRpcStatus(grpc_status);
@@ -246,17 +254,54 @@ Status PacketReceiver::UnaryReceive(Packet* packet) {
 }
 
 Status PacketReceiver::StreamingReceive(Packet* packet) {
-  if (!streaming_reader_->Read(packet)) {
-    return MakeStatusFromRpcStatus(streaming_reader_->Finish());
+  bool first_receiving = first_receiving_;
+  first_receiving_ = false;
+
+  if (!streaming_readers_[current_receiver_mode_]->Read(packet)) {
+    auto grpc_status = streaming_readers_[current_receiver_mode_]->Finish();
+    if (first_receiving && options_.receiver_mode == ReceiverMode::Auto &&
+        current_receiver_mode_ == ReceiverMode::StreamingReceive &&
+        grpc_status.error_code() == grpc::StatusCode::OUT_OF_RANGE) {
+      LOG(INFO) << "Switch to replay mode";
+      current_receiver_mode_ = ReceiverMode::Replay;
+      // Dispose unused client reader (ReceivePackets) while switching the
+      // receiver mode.
+      DisposeUnusedClientReader();
+      return StreamingReceive(packet);
+    } else {
+      return MakeStatusFromRpcStatus(grpc_status);
+    }
   }
+
+  // Dispose unused client reader (could be either ReceivePackets or
+  // ReplayStream).
+  if (first_receiving && options_.receiver_mode == ReceiverMode::Auto) {
+    DisposeUnusedClientReader();
+  }
+
   return OkStatus();
 }
 
 Status PacketReceiver::Receive(Packet* packet) {
-  if (streaming_reader_ == nullptr) {
+  if (options_.receiver_mode == ReceiverMode::UnaryReceive) {
     return UnaryReceive(packet);
   } else {
     return StreamingReceive(packet);
+  }
+}
+
+void PacketReceiver::DisposeUnusedClientReader() {
+  auto dispose = [this](ReceiverMode mode) {
+    ctx_[mode]->TryCancel();
+    streaming_readers_.erase(mode);
+    ctx_.erase(mode);
+  };
+
+  if (current_receiver_mode_ == ReceiverMode::Replay) {
+    dispose(ReceiverMode::StreamingReceive);
+  }
+  if (current_receiver_mode_ == ReceiverMode::StreamingReceive) {
+    dispose(ReceiverMode::Replay);
   }
 }
 
