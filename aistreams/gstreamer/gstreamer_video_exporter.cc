@@ -47,53 +47,6 @@ Status ValidateOptions(const GstreamerVideoExporter::Options& options) {
 
 }  // namespace
 
-// Signaling object used to communicate with the writer thread.
-// TODO: Refactor and combine with CompletionSignal (see gstreamer_runner.cc).
-class GstreamerVideoExporter::WriterSignal {
- public:
-  WriterSignal() = default;
-  ~WriterSignal() = default;
-
-  void Start() {
-    absl::MutexLock lock(&mu_);
-    is_completed_ = false;
-  }
-
-  void End() {
-    absl::MutexLock lock(&mu_);
-    is_completed_ = true;
-  }
-
-  bool IsCompleted() const {
-    absl::MutexLock lock(&mu_);
-    return is_completed_;
-  }
-
-  bool WaitUntilCompleted(absl::Duration timeout) {
-    absl::MutexLock lock(&mu_);
-    absl::Condition cond(
-        +[](bool* is_completed) -> bool { return *is_completed; },
-        &is_completed_);
-    return mu_.AwaitWithTimeout(cond, timeout);
-  }
-
-  Status GetStatus() const {
-    absl::MutexLock lock(&mu_);
-    return status_;
-  }
-
-  void SetStatus(const Status& status) {
-    absl::MutexLock lock(&mu_);
-    status_ = status;
-    return;
-  }
-
- private:
-  mutable absl::Mutex mu_;
-  bool is_completed_ ABSL_GUARDED_BY(mu_) = true;
-  Status status_ ABSL_GUARDED_BY(mu_) = OkStatus();
-};
-
 // --------------------------------------------------------------------
 // GstreamerVideoExporter implementation.
 
@@ -281,7 +234,7 @@ void GstreamerVideoExporter::StartWriter() {
   if (writer_thread_.joinable()) {
     return;
   }
-  writer_signal_ = std::make_unique<WriterSignal>();
+  writer_signal_ = std::make_unique<CompletionSignal>();
   writer_signal_->Start();
   writer_thread_ = std::thread(&GstreamerVideoExporter::WriterWork, this);
   return;

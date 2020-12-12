@@ -70,7 +70,33 @@ cc_test(
     name = "grpc_status_delegate_test",
     srcs = ["grpc_status_delegate_test.cc"],
     deps = [
-       ":grpc_status_delegate",
+        ":grpc_status_delegate",
         "//aistreams/port:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "completion_signal",
+    srcs = [
+        "completion_signal.cc",
+    ],
+    hdrs = [
+        "completion_signal.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aistreams/port:status",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "completion_signal_test",
+    srcs = ["completion_signal_test.cc"],
+    deps = [
+        ":completion_signal",
+        "//aistreams/port:gtest_main",
+        "//aistreams/port:status",
     ],
 )

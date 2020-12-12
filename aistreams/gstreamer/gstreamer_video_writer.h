@@ -49,8 +49,8 @@ class GstreamerVideoWriter {
   Status Put(const GstreamerBuffer&);
 
   // Copy-control members. Use Create() rather than the constructors.
-  ~GstreamerVideoWriter();
   explicit GstreamerVideoWriter(const Options&);
+  ~GstreamerVideoWriter() = default;
   GstreamerVideoWriter() = delete;
   GstreamerVideoWriter(const GstreamerVideoWriter&) = delete;
   GstreamerVideoWriter& operator=(const GstreamerVideoWriter&) = delete;

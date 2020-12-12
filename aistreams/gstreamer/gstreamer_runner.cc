@@ -29,6 +29,7 @@
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
+#include "aistreams/util/completion_signal.h"
 
 namespace aistreams {
 
@@ -37,44 +38,6 @@ namespace {
 constexpr char kAppSrcName[] = "feed";
 constexpr char kAppSinkName[] = "fetch";
 constexpr int kPipelineFinishTimeoutSeconds = 5;
-
-// An object used to signal completion to collaborating threads.
-class CompletionSignal {
- public:
-  CompletionSignal() = default;
-  ~CompletionSignal() = default;
-
-  void Start() {
-    absl::MutexLock lock(&is_completed_mu_);
-    is_completed_ = false;
-  }
-
-  void End() {
-    absl::MutexLock lock(&is_completed_mu_);
-    is_completed_ = true;
-  }
-
-  bool IsCompleted() {
-    absl::MutexLock lock(&is_completed_mu_);
-    return is_completed_;
-  }
-
-  bool WaitUntilCompleted(absl::Duration timeout) {
-    absl::MutexLock lock(&is_completed_mu_);
-    absl::Condition cond(
-        +[](bool* is_completed) -> bool { return *is_completed; },
-        &is_completed_);
-    return is_completed_mu_.AwaitWithTimeout(cond, timeout);
-  }
-
-  CompletionSignal(const CompletionSignal&) = delete;
-  CompletionSignal(CompletionSignal&&) = delete;
-  CompletionSignal& operator=(const CompletionSignal&) = delete;
-
- private:
-  mutable absl::Mutex is_completed_mu_;
-  bool is_completed_ ABSL_GUARDED_BY(is_completed_mu_) = true;
-};
 
 // RAII object that grants a *running* glib main loop.
 //

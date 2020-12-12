@@ -28,6 +28,7 @@
 #include "aistreams/gstreamer/gstreamer_raw_image_yielder.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/statusor.h"
+#include "aistreams/util/completion_signal.h"
 #include "aistreams/util/producer_consumer_queue.h"
 
 namespace aistreams {
@@ -100,8 +101,7 @@ class GstreamerVideoExporter {
   Status StopWriter();
   void WriterWork();
   std::thread writer_thread_;
-  class WriterSignal;
-  std::unique_ptr<WriterSignal> writer_signal_;
+  std::unique_ptr<CompletionSignal> writer_signal_;
 };
 
 }  // namespace aistreams
