@@ -71,7 +71,7 @@ class Status {
 
   // Copies the specified status.
   Status(const Status& s);
-  void operator=(const Status& s);
+  Status& operator=(const Status& s);
 
   // Returns true iff the status indicates success.
   bool ok() const {
@@ -129,12 +129,13 @@ class Status {
 inline Status::Status(const Status& s)
     : state_((s.state_ == NULL) ? NULL : new State(*s.state_)) {}
 
-inline void Status::operator=(const Status& s) {
+inline Status& Status::operator=(const Status& s) {
   // The following condition catches both aliasing (when this == &s),
   // and the common case where both s and *this are ok.
   if (state_ != s.state_) {
     SlowCopyFrom(s.state_.get());
   }
+  return *this;
 }
 
 inline bool Status::operator==(const Status& x) const {
