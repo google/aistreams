@@ -35,8 +35,8 @@ namespace aistreams {
 
 // This class exports a sequence of video files.
 //
-// Objects of this class turns a sequence of packets from a stream and turns
-// them into a sequence of video files.
+// Objects of this class turns a sequence of packets from a stream into a
+// sequence of video files.
 //
 // TODO: Add support for exporting from a local gstreamer pipeline.
 // TODO: Add support for GCS upload (please coordinate with server guys).
@@ -44,25 +44,33 @@ class GstreamerVideoExporter {
  public:
   // Options to configure the GstreamerVideoExporter.
   struct Options {
-    // An optional prefix to the exported videos.
-    std::string file_prefix;
+    // ------------------------------------------------------------
+    // Video writing configurations.
 
     // Maximum number of frames saved into each video file.
     // TODO: add max time interval and consider max file size.
     int max_frames_per_file = 200;
 
-    // Options used to configure the packet receiver.
+    // An optional prefix to the exported videos.
+    std::string file_prefix;
+
+    // ------------------------------------------------------------
+    // Stream server packet source configuration.
+
+    // Packet receiver configuration.
     ReceiverOptions receiver_options;
 
-    // The timeout to receive a packet from the input stream.
+    // Timeout to receive a packet from a stream server.
     absl::Duration receiver_timeout = absl::Seconds(10);
 
-    // The deadline for the video writer to finalize a file after the source
-    // stream has ended.
-    absl::Duration writer_finalization_deadline = absl::Seconds(5);
+    // ------------------------------------------------------------
+    // System configurations.
 
-    // Size of the internal raw image work buffer.
+    // Size of internal work buffers.
     int working_buffer_size = 100;
+
+    // The deadline for workers to gracefully finalize their work.
+    absl::Duration finalization_deadline = absl::Seconds(5);
   };
 
   // Create a fully initialized video exporter.
@@ -84,24 +92,8 @@ class GstreamerVideoExporter {
   GstreamerVideoExporter& operator=(GstreamerVideoExporter&&) = delete;
 
  private:
-  Status Initialize();
-  StatusOr<GstreamerBuffer> ReceiveFirstBuffer();
-  Status CreateAndWarmupRawImageYielder(GstreamerBuffer);
-
   Options options_;
   bool has_been_run_ = false;
-
-  std::unique_ptr<ReceiverQueue<Packet>> packet_receiver_queue_ = nullptr;
-  std::unique_ptr<GstreamerRawImageYielder> raw_image_yielder_ = nullptr;
-  std::shared_ptr<ProducerConsumerQueue<StatusOr<RawImage>>>
-      raw_image_pcqueue_ = nullptr;
-
-  // Members related to the Writer.
-  void StartWriter();
-  Status StopWriter();
-  void WriterWork();
-  std::thread writer_thread_;
-  std::unique_ptr<CompletionSignal> writer_signal_;
 };
 
 }  // namespace aistreams

@@ -128,6 +128,7 @@ cc_library(
         "//aistreams/port:statusor",
         "//aistreams/util:completion_signal",
         "//aistreams/util:producer_consumer_queue",
+        "//aistreams/util:random_string",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
