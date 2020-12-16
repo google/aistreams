@@ -122,6 +122,7 @@ class OnPremStreamManagerImpl : public StreamManager {
     grpc::Status grpc_status =
         stub_->CreateStream(&context, request, &response);
     if (!grpc_status.ok()) {
+      LOG(ERROR) << grpc_status.error_message();
       return UnknownError("Encountered error calling RPC CreateStream");
     }
     return stream;
