@@ -27,7 +27,7 @@ namespace aistreams {
 namespace {
 
 Status ValidateOptions(const GstreamerVideoWriter::Options& options) {
-  if (options.filename.empty()) {
+  if (options.file_path.empty()) {
     return InvalidArgumentError(
         "You must supply the name of the output video file");
   }
@@ -48,7 +48,7 @@ StatusOr<std::string> AssembleGstreamerPipeline(
   pipeline_elements.push_back("x264enc");
   pipeline_elements.push_back("mp4mux");
   pipeline_elements.push_back(
-      absl::StrFormat("filesink location=%s", options.filename));
+      absl::StrFormat("filesink location=%s", options.file_path));
   return absl::StrJoin(pipeline_elements, " ! ");
 }
 

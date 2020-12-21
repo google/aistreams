@@ -39,7 +39,6 @@ namespace aistreams {
 // sequence of video files.
 //
 // TODO: Add support for exporting from a local gstreamer pipeline.
-// TODO: Add support for GCS upload (please coordinate with server guys).
 class GstreamerVideoExporter {
  public:
   // Options to configure the GstreamerVideoExporter.
@@ -51,8 +50,33 @@ class GstreamerVideoExporter {
     // TODO: add max time interval and consider max file size.
     int max_frames_per_file = 200;
 
+    // The directory into which video files are saved.
+    //
+    // Leaving this empty will save to the current working directory.
+    std::string output_dir;
+
     // An optional prefix to the exported videos.
+    //
+    // This is for specifying a file prefix, not an output directory. Use
+    // `output_dir` to change the destination output directory.
     std::string file_prefix;
+
+    // ------------------------------------------------------------
+    // GCS uploading configurations.
+
+    // Whether to upload to GCS.
+    bool upload_to_gcs = false;
+
+    // Whether to keep a local copy of the uploaded video.
+    bool keep_local = true;
+
+    // The GCS bucket to upload into.
+    std::string gcs_bucket_name;
+
+    // The sub-directory of the GCS bucket to upload into.
+    //
+    // Leaving this empty will write to the top level of the bucket.
+    std::string gcs_object_dir;
 
     // ------------------------------------------------------------
     // Stream server packet source configuration.

@@ -33,8 +33,8 @@ class GstreamerVideoWriter {
  public:
   // Options to configure the GstreamerVideoWriter.
   struct Options {
-    // The name of the output video file.
-    std::string filename;
+    // The path to the output video file.
+    std::string file_path;
 
     // The caps string of all gstreamer buffers that would be fed.
     std::string caps_string;

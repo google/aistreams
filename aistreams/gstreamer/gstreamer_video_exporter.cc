@@ -16,6 +16,7 @@
 
 #include <tuple>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "aistreams/base/util/packet_utils.h"
@@ -25,7 +26,10 @@
 #include "aistreams/port/logging.h"
 #include "aistreams/port/status.h"
 #include "aistreams/port/status_macros.h"
+#include "aistreams/util/file_path.h"
 #include "aistreams/util/random_string.h"
+#include "google/cloud/storage/client.h"
+#include "google/cloud/storage/parallel_upload.h"
 
 namespace aistreams {
 
@@ -33,6 +37,7 @@ namespace {
 
 constexpr char kDefaultWorkerName[] = "Worker";
 constexpr int kDefaultRandomStringLength = 5;
+constexpr char kGcsUploaderName[] = "GcsUploader";
 constexpr char kLocalVideoSaverName[] = "LocalVideoSaver";
 constexpr char kStreamServerSourceName[] = "StreamServerSource";
 
@@ -437,11 +442,17 @@ class StreamServerSource : public Worker<StreamServerSource, std::tuple<>,
 
 class LocalVideoSaver
     : public Worker<LocalVideoSaver, std::tuple<StatusOr<RawImage>>,
-                    std::tuple<>> {
+                    std::tuple<StatusOr<std::string>>> {
  public:
   struct Options {
     std::string file_prefix;
+    std::string output_dir;
     int max_frames_per_file;
+
+    // TODO: Consider refactoring to have two Workers, one having no output
+    // stream and another having one so that we can avoid this conditional
+    // behavior that muddies the interface semantics.
+    bool forward_file_paths;
   };
   explicit LocalVideoSaver(const Options& options) : options_(options) {}
 
@@ -451,6 +462,7 @@ class LocalVideoSaver
     Status return_status = OkStatus();
     for (bool start_new_file = true; start_new_file;) {
       std::unique_ptr<GstreamerVideoWriter> video_writer = nullptr;
+      std::string output_video_file_path;
       for (int image_index = 0; image_index < options_.max_frames_per_file;
            ++image_index) {
         // Get a new raw image from the decoder.
@@ -475,20 +487,23 @@ class LocalVideoSaver
           return_status = UnknownError(absl::StrFormat(
               "Could not convert a raw image into a gstreamer buffer: %s",
               raw_image_gstreamer_buffer_statusor.status().message()));
-          start_new_file = false;
           break;
         }
         auto raw_image_gstreamer_buffer =
             std::move(raw_image_gstreamer_buffer_statusor).ValueOrDie();
 
         if (video_writer == nullptr) {
+          output_video_file_path = GenerateVideoFilePath();
+          GstreamerVideoWriter::Options video_writer_options;
+          video_writer_options.file_path = output_video_file_path;
+          video_writer_options.caps_string =
+              raw_image_gstreamer_buffer.get_caps();
           auto video_writer_statusor =
-              CreateVideoWriter(raw_image_gstreamer_buffer.get_caps());
+              GstreamerVideoWriter::Create(video_writer_options);
           if (!video_writer_statusor.ok()) {
             return_status = InternalError(
                 absl::StrFormat("Failed to create a new video writer: %s",
                                 video_writer_statusor.status().message()));
-            start_new_file = false;
             break;
           }
           video_writer = std::move(video_writer_statusor).ValueOrDie();
@@ -498,9 +513,46 @@ class LocalVideoSaver
         if (!status.ok()) {
           return_status = UnknownError(absl::StrFormat(
               "Failed to write a raw image: %s", status.message()));
-          start_new_file = false;
           break;
         }
+      }
+
+      // Explicitly flush the video file.
+      video_writer.reset(nullptr);
+      if (!return_status.ok()) {
+        if (std::remove(output_video_file_path.c_str()) != 0) {
+          LOG(WARNING) << absl::StrFormat("%s: Failed to remove %s.", GetName(),
+                                          output_video_file_path);
+        }
+        start_new_file = false;
+        continue;
+      }
+      LOG(INFO) << absl::StrFormat("%s: Successfully wrote local file %s.",
+                                   GetName(), output_video_file_path);
+
+      if (options_.forward_file_paths) {
+        // Forward the video path if downstream is still running.
+        // Stop processing otherwise.
+        if (!out_channel()->IsDstCompleted()) {
+          if (!out_channel()->pcqueue()->TryEmplace(output_video_file_path)) {
+            LOG(WARNING) << absl::StrFormat(
+                "%s: The file path buffer is full. Omitting %s from "
+                "downstream processing.",
+                GetName(), output_video_file_path);
+          }
+        } else {
+          start_new_file = false;
+          continue;
+        }
+      }
+    }
+
+    // Cleanup.
+    if (options_.forward_file_paths) {
+      if (!out_channel()->pcqueue()->TryEmplace(
+              NotFoundError("Reached EOS."))) {
+        LOG(WARNING) << absl::StrFormat(
+            "%s: Failed to deliver EOS to dependent workers.", GetName());
       }
     }
     return return_status;
@@ -513,7 +565,163 @@ class LocalVideoSaver
     return std::get<0>(in_channels_);
   }
 
+  std::shared_ptr<Channel<StatusOr<std::string>>> out_channel() {
+    return std::get<0>(out_channels_);
+  }
+
   Status ValidatePreconditions() {
+    if (options_.max_frames_per_file <= 0) {
+      return InvalidArgumentError(
+          absl::StrFormat("%s: A positive value for the maximum frame count is "
+                          "expected (given %d)",
+                          GetName(), options_.max_frames_per_file));
+    }
+    if (in_channel() == nullptr) {
+      return FailedPreconditionError(absl::StrFormat(
+          "%s: No input channel found; please Attach() one.", GetName()));
+    }
+    if (!in_channel()->HasSrc()) {
+      return InternalError(
+          absl::StrFormat("%s: The input channel has no source.", GetName()));
+    }
+
+    if (options_.forward_file_paths) {
+      if (out_channel() == nullptr) {
+        return FailedPreconditionError(absl::StrFormat(
+            "%s: No output channel found; please Attach() one.", GetName()));
+      }
+      if (!out_channel()->HasDst()) {
+        return InternalError(absl::StrFormat(
+            "%s: The output channel has no destination.", GetName()));
+      }
+    }
+    return OkStatus();
+  }
+
+  std::string GenerateVideoFilePath() {
+    // TODO: Name the files according to server conventions.
+    //
+    // Currently, we use the following:
+    // [<optional-prefix>-]<random-session-id>-<time-string>.mp4
+    //
+    // The <time-string> is in absl's default human readable format (RFC3339).
+    // and uses the local time.
+    //
+    // It is better to use the packet timestamp for the stream server
+    // source and the gstreamer buffer time for the gstreamer input source
+    // (although one should investigate whether the buffer's timestamp
+    // corresponds to the event's local time; for on-device sources, this is
+    // close to absl::Now(), but not necessarily for network sources).
+    static const std::string session_string =
+        RandomString(kDefaultRandomStringLength);
+    std::string time_string = absl::FormatTime(absl::Now());
+    std::vector<std::string> file_name_components;
+    if (!options_.file_prefix.empty()) {
+      file_name_components.push_back(options_.file_prefix);
+    }
+    file_name_components.push_back(session_string);
+    file_name_components.push_back(time_string);
+    std::string file_name = absl::StrJoin(file_name_components, "-");
+    file_name += ".mp4";
+
+    // Decide the output file path.
+    std::string file_path = file_name;
+    if (!options_.output_dir.empty()) {
+      file_path = absl::StrFormat("%s/%s", options_.output_dir, file_name);
+    }
+    return file_path;
+  }
+};
+
+// --------------------------------------------------------------------
+// GcsUploader implementation.
+
+class GcsUploader
+    : public Worker<GcsUploader, std::tuple<StatusOr<std::string>>,
+                    std::tuple<>> {
+ public:
+  struct Options {
+    bool do_work;
+    std::string gcs_bucket_name;
+    std::string gcs_object_dir;
+    bool keep_local;
+  };
+  explicit GcsUploader(const Options& options) : options_(options) {}
+
+  Status WorkImpl() {
+    if (!options_.do_work) {
+      return OkStatus();
+    }
+    AIS_RETURN_IF_ERROR(ValidatePreconditions());
+
+    for (bool start_new_connection = true; start_new_connection;) {
+      google::cloud::StatusOr<google::cloud::storage::Client> client_statusor =
+          google::cloud::storage::Client::CreateDefaultClient();
+      if (!client_statusor.ok()) {
+        return UnknownError(
+            absl::StrFormat("%s: Failed to create a GCS Client: %s", GetName(),
+                            client_statusor.status().message()));
+      }
+      auto gcs_client = std::move(client_statusor).value();
+
+      while (true) {
+        // Get the path to a local video file.
+        StatusOr<std::string> file_path_statusor;
+        while (!in_channel()->pcqueue()->TryPop(file_path_statusor,
+                                                absl::Seconds(5))) {
+          if (in_channel()->IsSrcCompleted()) {
+            file_path_statusor = NotFoundError(
+                absl::StrFormat("%s: The file path source completed but the "
+                                "EOS was not delivered.",
+                                GetName()));
+            break;
+          }
+        }
+        if (file_path_statusor.status().code() == StatusCode::kNotFound) {
+          start_new_connection = false;
+          break;
+        }
+
+        // Upload the file.
+        auto file_path = std::move(file_path_statusor).ValueOrDie();
+        auto object_name = GenerateGcsObjectName(file_path);
+        google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
+            metadata = gcs_client.UploadFile(
+                file_path, options_.gcs_bucket_name, object_name);
+
+        // TODO: Currently we force all errors to recover by trying to get a new
+        // GCS connection. Clearly, this can be improved, but it works as a big
+        // hammer to take care of poor connectivity cases.
+        if (!metadata.ok()) {
+          LOG(WARNING) << absl::StrFormat("%s: Failed to upload %s to GCS: %s",
+                                          GetName(), file_path,
+                                          metadata.status().message());
+          break;
+        }
+        LOG(INFO) << absl::StrFormat(
+            "%s: Successfully uploaded %s to gs://%s/%s.", GetName(), file_path,
+            (*metadata).bucket(), (*metadata).name());
+
+        // Remove the local file.
+        if (!options_.keep_local) {
+          if (std::remove(file_path.c_str()) != 0) {
+            LOG(WARNING) << absl::StrFormat("%s: Failed to remove %s.",
+                                            GetName(), file_path);
+          }
+        }
+      }
+    }
+    return OkStatus();
+  }
+
+ private:
+  Options options_;
+
+  Status ValidatePreconditions() {
+    if (options_.gcs_bucket_name.empty()) {
+      return InvalidArgumentError(absl::StrFormat(
+          "%s: You must supply a non-empty GCS bucket name.", GetName()));
+    }
     if (in_channel() == nullptr) {
       return FailedPreconditionError(absl::StrFormat(
           "%s: No input channel found; please Attach() one.", GetName()));
@@ -525,61 +733,36 @@ class LocalVideoSaver
     return OkStatus();
   }
 
-  StatusOr<std::unique_ptr<GstreamerVideoWriter>> CreateVideoWriter(
-      const std::string& caps_string) {
-    // TODO: Name the files according to server conventions.
-    //
-    // Currently, we use the following:
-    // [<optional-prefix>-]<random-session-id>-<time-string>.mp4
-    //
-    // The <time-string> is in absl's default human readable format (RFC3339).
-    static const std::string session_string =
-        RandomString(kDefaultRandomStringLength);
-    std::string time_string = absl::FormatTime(absl::Now());
-    std::vector<std::string> file_name_components;
-    if (!options_.file_prefix.empty()) {
-      file_name_components.push_back(options_.file_prefix);
-    }
-    file_name_components.push_back(session_string);
-    file_name_components.push_back(time_string);
-    std::string filename = absl::StrJoin(file_name_components, "-");
-    filename += ".mp4";
+  std::shared_ptr<Channel<StatusOr<std::string>>> in_channel() {
+    return std::get<0>(in_channels_);
+  }
 
-    GstreamerVideoWriter::Options video_writer_options;
-    video_writer_options.filename = filename;
-    video_writer_options.caps_string = caps_string;
-    return GstreamerVideoWriter::Create(video_writer_options);
+  std::string GenerateGcsObjectName(const std::string& file_path) {
+    std::string file_name(file::Basename(file_path));
+    if (options_.gcs_object_dir.empty()) {
+      return file_name;
+    }
+    if (!absl::EndsWith(options_.gcs_object_dir, "/")) {
+      return absl::StrFormat("%s/%s", options_.gcs_object_dir, file_name);
+    } else {
+      return absl::StrFormat("%s%s", options_.gcs_object_dir, file_name);
+    }
   }
 };
 
+}  // namespace
+
 // --------------------------------------------------------------------
 // GstreamerVideoExporter implementation.
-
-Status ValidateOptions(const GstreamerVideoExporter::Options& options) {
-  if (options.max_frames_per_file <= 0) {
-    return InvalidArgumentError(
-        "You must supply a positive value for the maximum frame count of each "
-        "video");
-  }
-
-  if (options.working_buffer_size <= 0) {
-    return InvalidArgumentError(
-        "You must supply a positive value for the working buffer size");
-  }
-
-  return OkStatus();
-}
-
-}  // namespace
 
 GstreamerVideoExporter::GstreamerVideoExporter(const Options& options)
     : options_(options) {}
 
 StatusOr<std::unique_ptr<GstreamerVideoExporter>>
 GstreamerVideoExporter::Create(const Options& options) {
-  auto status = ValidateOptions(options);
-  if (!status.ok()) {
-    return status;
+  if (options.working_buffer_size <= 0) {
+    return InvalidArgumentError(
+        "You must supply a positive value for the working buffer size");
   }
   auto video_exporter = std::make_unique<GstreamerVideoExporter>(options);
   return video_exporter;
@@ -594,9 +777,19 @@ Status GstreamerVideoExporter::Run() {
   has_been_run_ = true;
 
   // Create the workers and connect them up with channels.
+  GcsUploader::Options gcs_uploader_options;
+  gcs_uploader_options.do_work = options_.upload_to_gcs;
+  gcs_uploader_options.gcs_bucket_name = options_.gcs_bucket_name;
+  gcs_uploader_options.gcs_object_dir = options_.gcs_object_dir;
+  gcs_uploader_options.keep_local = options_.keep_local;
+  auto gcs_uploader = std::make_shared<GcsUploader>(gcs_uploader_options);
+  gcs_uploader->SetName(kGcsUploaderName);
+
   LocalVideoSaver::Options local_video_saver_options;
+  local_video_saver_options.output_dir = options_.output_dir;
   local_video_saver_options.file_prefix = options_.file_prefix;
   local_video_saver_options.max_frames_per_file = options_.max_frames_per_file;
+  local_video_saver_options.forward_file_paths = options_.upload_to_gcs;
   auto local_video_saver =
       std::make_shared<LocalVideoSaver>(local_video_saver_options);
   local_video_saver->SetName(kLocalVideoSaverName);
@@ -607,9 +800,20 @@ Status GstreamerVideoExporter::Run() {
       std::make_shared<StreamServerSource>(stream_server_source_options);
   stream_server_source->SetName(kStreamServerSourceName);
 
-  auto raw_image_channel = std::make_shared<Channel<StatusOr<RawImage>>>(
+  auto file_path_channel = std::make_shared<Channel<StatusOr<std::string>>>(
       options_.working_buffer_size);
   auto status =
+      Attach<0, 0>(file_path_channel, local_video_saver, gcs_uploader);
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+    return UnknownError(
+        absl::StrFormat("Failed to Attach workers \"%s\" and \"%d\".",
+                        local_video_saver->GetName(), gcs_uploader->GetName()));
+  }
+
+  auto raw_image_channel = std::make_shared<Channel<StatusOr<RawImage>>>(
+      options_.working_buffer_size);
+  status =
       Attach<0, 0>(raw_image_channel, stream_server_source, local_video_saver);
   if (!status.ok()) {
     LOG(ERROR) << status;
@@ -619,6 +823,7 @@ Status GstreamerVideoExporter::Run() {
   }
 
   // Start the workers.
+  gcs_uploader->Work();
   local_video_saver->Work();
   stream_server_source->Work();
 
@@ -630,13 +835,20 @@ Status GstreamerVideoExporter::Run() {
   // Join the other workers.
   std::string deadline_exceeded_message =
       "\"%s\" did not finalize its work in time. It will be detached.";
-  Status writer_status = OkStatus();
+  Status local_video_saver_status = OkStatus();
   if (!local_video_saver->Join(options_.finalization_deadline)) {
-    writer_status = DeadlineExceededError(
+    local_video_saver_status = DeadlineExceededError(
         absl::StrFormat(absl::string_view(deadline_exceeded_message),
                         local_video_saver->GetName()));
   } else {
-    writer_status = local_video_saver->GetStatus();
+    local_video_saver_status = local_video_saver->GetStatus();
+  }
+  Status gcs_uploader_status = OkStatus();
+  if (!gcs_uploader->Join(options_.finalization_deadline)) {
+    gcs_uploader_status = DeadlineExceededError(absl::StrFormat(
+        absl::string_view(deadline_exceeded_message), gcs_uploader->GetName()));
+  } else {
+    gcs_uploader_status = gcs_uploader->GetStatus();
   }
 
   // Report errors.
@@ -647,8 +859,12 @@ Status GstreamerVideoExporter::Run() {
     LOG(ERROR) << stream_server_source_status;
     return_status = error_status;
   }
-  if (!writer_status.ok()) {
-    LOG(ERROR) << writer_status;
+  if (!local_video_saver_status.ok()) {
+    LOG(ERROR) << local_video_saver_status;
+    return_status = error_status;
+  }
+  if (!gcs_uploader_status.ok()) {
+    LOG(ERROR) << gcs_uploader_status;
     return_status = error_status;
   }
   return return_status;
