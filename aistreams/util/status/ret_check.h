@@ -47,13 +47,12 @@ inline StatusBuilder RetCheckImpl(const ::aistreams::Status& status,
 
 #define RET_CHECK(cond)               \
   while (ABSL_PREDICT_FALSE(!(cond))) \
-  return ::aistreams::RetCheckFailSlowPath(AISTREAMS_LOC, #cond)
+  return ::aistreams::RetCheckFailSlowPath(AIS_LOC, #cond)
 
 #define RET_CHECK_OK(status) \
-  AIS_RETURN_IF_ERROR(       \
-      ::aistreams::RetCheckImpl((status), #status, AISTREAMS_LOC))
+  AIS_RETURN_IF_ERROR(::aistreams::RetCheckImpl((status), #status, AIS_LOC))
 
-#define RET_CHECK_FAIL() return ::aistreams::RetCheckFailSlowPath(AISTREAMS_LOC)
+#define RET_CHECK_FAIL() return ::aistreams::RetCheckFailSlowPath(AIS_LOC)
 
 #define AISTREAMS_INTERNAL_RET_CHECK_OP(name, op, lhs, rhs) \
   RET_CHECK((lhs)op(rhs))

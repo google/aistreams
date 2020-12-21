@@ -124,6 +124,7 @@ cc_library(
     hdrs = [
         "examine_stack.h",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/debugging:stacktrace",
         "@com_google_absl//absl/debugging:symbolize",

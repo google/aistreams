@@ -75,11 +75,11 @@
 //     AIS_RETURN_IF_ERROR(foo.Method(args...));
 //     return ::aistreams::OkStatus();
 //   }
-#define AIS_RETURN_IF_ERROR(expr)                                         \
-  STATUS_MACROS_IMPL_ELSE_BLOCKER_                                        \
-  if (::aistreams::status_macro_internal::StatusAdaptorForMacros          \
-          status_macro_internal_adaptor = {(expr), __FILE__, __LINE__}) { \
-  } else /* NOLINT */                                                     \
+#define AIS_RETURN_IF_ERROR(expr)                                \
+  STATUS_MACROS_IMPL_ELSE_BLOCKER_                               \
+  if (::aistreams::status_macro_internal::StatusAdaptorForMacros \
+          status_macro_internal_adaptor = {(expr), AIS_LOC}) {   \
+  } else /* NOLINT */                                            \
     return status_macro_internal_adaptor.Consume()
 
 // Executes an expression `rexpr` that returns a
@@ -128,35 +128,104 @@
 // Example: Logging the error on failure.
 //   AIS_ASSIGN_OR_RETURN(ValueType value, MaybeGetValue(query), _.LogError());
 //
-#define AIS_ASSIGN_OR_RETURN(...)                                              \
-  STATUS_MACROS_IMPL_GET_VARIADIC_(__VA_ARGS__,                                \
-                                   STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_3_, \
-                                   STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_2_) \
+#define AIS_ASSIGN_OR_RETURN(...)                               \
+  STATUS_MACROS_IMPL_GET_VARIADIC_(                             \
+      (__VA_ARGS__, STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_3_, \
+       STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_2_))             \
   (__VA_ARGS__)
 
 // =================================================================
 // == Implementation details, do not rely on anything below here. ==
 // =================================================================
 
-#define STATUS_MACROS_IMPL_GET_VARIADIC_(_1, _2, _3, NAME, ...) NAME
+constexpr bool HasPotentialConditionalOperator(const char* lhs, int index) {
+  return (index == -1 ? false
+                      : (lhs[index] == '?' ? true
+                                           : HasPotentialConditionalOperator(
+                                                 lhs, index - 1)));
+}
 
-#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_2_(lhs, rexpr) \
-  STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_3_(lhs, rexpr, std::move(_))
-#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_3_(lhs, rexpr,            \
-                                                   error_expression)      \
-  STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_(                               \
-      STATUS_MACROS_IMPL_CONCAT_(_status_or_value, __LINE__), lhs, rexpr, \
-      error_expression)
-#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_(statusor, lhs, rexpr,   \
-                                                 error_expression)       \
-  auto statusor = (rexpr);                                               \
-  if (ABSL_PREDICT_FALSE(!statusor.ok())) {                              \
-    ::aistreams::StatusBuilder _(std::move(statusor).status(), __FILE__, \
-                                 __LINE__);                              \
-    (void)_; /* error_expression is allowed to not use this variable */  \
-    return (error_expression);                                           \
-  }                                                                      \
-  lhs = std::move(statusor).ValueOrDie()
+#define STATUS_MACROS_IMPL_GET_VARIADIC_HELPER_(_1, _2, _3, NAME, ...) NAME
+#define STATUS_MACROS_IMPL_GET_VARIADIC_(args) \
+  STATUS_MACROS_IMPL_GET_VARIADIC_HELPER_ args
+
+#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_2_(lhs, rexpr)                 \
+  STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_(                                    \
+      STATUS_MACROS_IMPL_CONCAT_(_status_or_value, __LINE__), lhs, rexpr,      \
+      return std::move(STATUS_MACROS_IMPL_CONCAT_(_status_or_value, __LINE__)) \
+          .status())
+
+#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_3_(lhs, rexpr,              \
+                                                   error_expression)        \
+  STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_(                                 \
+      STATUS_MACROS_IMPL_CONCAT_(_status_or_value, __LINE__), lhs, rexpr,   \
+      ::aistreams::StatusBuilder _(                                         \
+          std::move(STATUS_MACROS_IMPL_CONCAT_(_status_or_value, __LINE__)) \
+              .status(),                                                    \
+          AIS_LOC);                                                         \
+      (void)_; /* error_expression is allowed to not use this variable */   \
+      return (error_expression))
+
+#define STATUS_MACROS_IMPL_AIS_ASSIGN_OR_RETURN_(statusor, lhs, rexpr, \
+                                                 error_expression)     \
+  auto statusor = (rexpr);                                             \
+  if (ABSL_PREDICT_FALSE(!statusor.ok())) {                            \
+    error_expression;                                                  \
+  }                                                                    \
+  {                                                                    \
+    static_assert(                                                     \
+        #lhs[0] != '(' || #lhs[sizeof(#lhs) - 2] != ')' ||             \
+            !HasPotentialConditionalOperator(#lhs, sizeof(#lhs) - 2),  \
+        "Identified potential conditional operator, consider not "     \
+        "using ASSIGN_OR_RETURN");                                     \
+  }                                                                    \
+  STATUS_MACROS_IMPL_UNPARENTHESIZE_IF_PARENTHESIZED(lhs) =            \
+      std::move(statusor).ValueOrDie()
+
+// Internal helpers to check an empty argument.
+// The definitions of these macros are borrowed from
+// https://t6847kimo.github.io/blog/2019/02/04/Remove-comma-in-variadic-macro.html,
+// instead of the google internal approaches which relies on a GNU extension
+// support for ##__VA_ARGS__ and is not a part of c++ standards.
+#define STATUS_MACROS_IMPL_TRIGGER_PARENTHESIS(...) ,
+#define STATUS_MACROS_IMPL_ARG3(_0, _1, _2, ...) _2
+#define STATUS_MACROS_IMPL_HAS_COMMA(...) \
+  STATUS_MACROS_IMPL_ARG3(__VA_ARGS__, 1, 0)
+#define STATUS_MACROS_IMPL_IS_EMPTY(...)                       \
+  STATUS_MACROS_IMPL_IS_EMPTY_HELPER(                          \
+      STATUS_MACROS_IMPL_HAS_COMMA(__VA_ARGS__),               \
+      STATUS_MACROS_IMPL_HAS_COMMA(                            \
+          STATUS_MACROS_IMPL_TRIGGER_PARENTHESIS __VA_ARGS__), \
+      STATUS_MACROS_IMPL_HAS_COMMA(__VA_ARGS__(/*empty*/)),    \
+      STATUS_MACROS_IMPL_HAS_COMMA(                            \
+          STATUS_MACROS_IMPL_TRIGGER_PARENTHESIS __VA_ARGS__(/*empty*/)))
+#define STATUS_MACROS_IMPL_PASTES(_0, _1, _2, _3, _4) _0##_1##_2##_3##_4
+#define STATUS_MACROS_IMPL_IS_EMPTY_CASE_0001 ,
+#define STATUS_MACROS_IMPL_IS_EMPTY_HELPER(_0, _1, _2, _3) \
+  STATUS_MACROS_IMPL_HAS_COMMA(STATUS_MACROS_IMPL_PASTES(  \
+      STATUS_MACROS_IMPL_IS_EMPTY_CASE_, _0, _1, _2, _3))
+
+// Internal helpers for macro expansion.
+#define STATUS_MACROS_IMPL_EAT(...)
+#define STATUS_MACROS_IMPL_REM(...) __VA_ARGS__
+#define STATUS_MACROS_IMPL_EMPTY()
+
+// Internal helpers for if statement.
+#define STATUS_MACROS_IMPL_IF_1(_Then, _Else) _Then
+#define STATUS_MACROS_IMPL_IF_0(_Then, _Else) _Else
+#define STATUS_MACROS_IMPL_IF(_Cond, _Then, _Else) \
+  STATUS_MACROS_IMPL_CONCAT_(STATUS_MACROS_IMPL_IF_, _Cond)(_Then, _Else)
+
+// Expands to 1 if the input is parenthesized. Otherwise expands to 0.
+#define STATUS_MACROS_IMPL_IS_PARENTHESIZED(...) \
+  STATUS_MACROS_IMPL_IS_EMPTY(STATUS_MACROS_IMPL_EAT __VA_ARGS__)
+
+// If the input is parenthesized, removes the parentheses. Otherwise expands to
+// the input unchanged.
+#define STATUS_MACROS_IMPL_UNPARENTHESIZE_IF_PARENTHESIZED(...)             \
+  STATUS_MACROS_IMPL_IF(STATUS_MACROS_IMPL_IS_PARENTHESIZED(__VA_ARGS__),   \
+                        STATUS_MACROS_IMPL_REM, STATUS_MACROS_IMPL_EMPTY()) \
+  __VA_ARGS__
 
 // Internal helper for concatenating macro values.
 #define STATUS_MACROS_IMPL_CONCAT_INNER_(x, y) x##y
@@ -170,7 +239,7 @@
 // because it thinks you might want the else to bind to the first if.  This
 // leads to problems with code like:
 //
-//   if (do_expr) AIS_RETURN_IF_ERROR(expr) << "Some message";
+//   if (do_expr) RETURN_IF_ERROR(expr) << "Some message";
 //
 // The "switch (0) case 0:" idiom is used to suppress this.
 #define STATUS_MACROS_IMPL_ELSE_BLOCKER_ \
@@ -185,18 +254,16 @@ namespace status_macro_internal {
 // that declares a variable.
 class StatusAdaptorForMacros {
  public:
-  StatusAdaptorForMacros(const Status& status, const char* file, int line)
-      : builder_(status, file, line) {}
+  StatusAdaptorForMacros(const Status& status, SourceLocation loc)
+      : builder_(status, loc) {}
 
-  StatusAdaptorForMacros(Status&& status, const char* file, int line)
-      : builder_(std::move(status), file, line) {}
+  StatusAdaptorForMacros(Status&& status, SourceLocation loc)
+      : builder_(std::move(status), loc) {}
 
-  StatusAdaptorForMacros(const StatusBuilder& builder, const char* /* file */,
-                         int /* line */)
+  StatusAdaptorForMacros(const StatusBuilder& builder, SourceLocation loc)
       : builder_(builder) {}
 
-  StatusAdaptorForMacros(StatusBuilder&& builder, const char* /* file */,
-                         int /* line */)
+  StatusAdaptorForMacros(StatusBuilder&& builder, SourceLocation loc)
       : builder_(std::move(builder)) {}
 
   StatusAdaptorForMacros(const StatusAdaptorForMacros&) = delete;

@@ -24,11 +24,11 @@ namespace aistreams {
 // Each of the functions below creates a canonical error with the given
 // message. The error code of the returned status object matches the name of
 // the function.
-inline ::aistreams::Status AbortedError(absl::string_view message) {
+inline ::aistreams::Status AbortedError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kAborted, message);
 }
 
-inline ::aistreams::Status AlreadyExistsError(absl::string_view message) {
+inline ::aistreams::Status AlreadyExistsError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kAlreadyExists, message);
 }
 
@@ -36,61 +36,67 @@ inline ::aistreams::Status CancelledError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kCancelled, message);
 }
 
-inline ::aistreams::Status DataLossError(absl::string_view message) {
+inline ::aistreams::Status DataLossError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kDataLoss, message);
 }
 
-inline ::aistreams::Status DeadlineExceededError(absl::string_view message) {
+inline ::aistreams::Status DeadlineExceededError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kDeadlineExceeded,
                              message);
 }
 
-inline ::aistreams::Status FailedPreconditionError(absl::string_view message) {
+inline ::aistreams::Status FailedPreconditionError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kFailedPrecondition,
                              message);
 }
 
-inline ::aistreams::Status InternalError(absl::string_view message) {
+inline ::aistreams::Status InternalError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kInternal, message);
 }
 
-inline ::aistreams::Status InvalidArgumentError(absl::string_view message) {
+inline ::aistreams::Status InvalidArgumentError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kInvalidArgument,
                              message);
 }
 
-inline ::aistreams::Status NotFoundError(absl::string_view message) {
+inline ::aistreams::Status NotFoundError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kNotFound, message);
 }
 
-inline ::aistreams::Status OutOfRangeError(absl::string_view message) {
+inline ::aistreams::Status OutOfRangeError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kOutOfRange, message);
 }
 
-inline ::aistreams::Status PermissionDeniedError(absl::string_view message) {
+inline ::aistreams::Status PermissionDeniedError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kPermissionDenied,
                              message);
 }
 
-inline ::aistreams::Status ResourceExhaustedError(absl::string_view message) {
+inline ::aistreams::Status ResourceExhaustedError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kResourceExhausted,
                              message);
 }
 
-inline ::aistreams::Status UnauthenticatedError(absl::string_view message) {
+inline ::aistreams::Status UnauthenticatedError(
+    absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kUnauthenticated,
                              message);
 }
 
-inline ::aistreams::Status UnimplementedError(absl::string_view message) {
+inline ::aistreams::Status UnimplementedError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kUnimplemented, message);
 }
 
-inline ::aistreams::Status UnknownError(absl::string_view message) {
+inline ::aistreams::Status UnknownError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kUnknown, message);
 }
 
-inline ::aistreams::Status UnavailableError(absl::string_view message) {
+inline ::aistreams::Status UnavailableError(absl::string_view message = "") {
   return ::aistreams::Status(::aistreams::StatusCode::kUnavailable, message);
 }
 

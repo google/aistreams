@@ -29,9 +29,15 @@ class SourceLocation {
   constexpr SourceLocation() : line_(0), file_name_(nullptr) {}
 
   // Wrapper to invoke the private constructor below. This should only be
-  // used by the AISTREAMS_LOC macro, hence the name.
+  // used by the AIS_LOC macro, hence the name.
   static constexpr SourceLocation DoNotInvokeDirectly(std::uint_least32_t line,
                                                       const char* file_name) {
+    return SourceLocation(line, file_name);
+  }
+
+  static constexpr SourceLocation current(
+      std::uint_least32_t line = __builtin_LINE(),
+      const char* file_name = __builtin_FILE()) {
     return SourceLocation(line, file_name);
   }
 
@@ -46,7 +52,7 @@ class SourceLocation {
 
  private:
   // Do not invoke this constructor directly. Instead, use the
-  // AISTREAMS_LOC macro below.
+  // AIS_LOC macro below.
   //
   // file_name must outlive all copies of the SourceLocation
   // object, so in practice it should be a std::string literal.
@@ -60,7 +66,9 @@ class SourceLocation {
 }  // namespace aistreams
 
 // If a function takes a SourceLocation parameter, pass this as the argument.
-#define AISTREAMS_LOC \
+#define AIS_LOC \
   ::aistreams::SourceLocation::DoNotInvokeDirectly(__LINE__, __FILE__)
+
+#define AIS_LOC_CURRENT_DEFAULT_ARG = ::aistreams::SourceLocation::current()
 
 #endif  // AISTREAMS_UTIL_STATUS_SOURCE_LOCATION_H_

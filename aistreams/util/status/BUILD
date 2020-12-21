@@ -22,9 +22,13 @@ cc_library(
     deps = [
         ":source_location",
         "//aistreams/port:logging",
+        "//aistreams/util:examine_stack",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
@@ -72,6 +76,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":status",
+        ":statusor",
         "//aistreams/port:gtest_main",
     ],
 )
@@ -93,6 +98,18 @@ cc_test(
     size = "small",
     srcs = ["statusor_test.cc"],
     linkstatic = 1,
+    deps = [
+        ":status",
+        ":statusor",
+        "//aistreams/port:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "status_macros_test",
+    srcs = [
+        "status_macros_test.cc",
+    ],
     deps = [
         ":status",
         ":statusor",
