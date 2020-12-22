@@ -22,17 +22,17 @@
 namespace aistreams {
 
 // Class representing a specific location in the source code of a program.
-// source_location is copyable.
-class source_location {
+// SourceLocation is copyable.
+class SourceLocation {
  public:
   // Avoid this constructor; it populates the object with dummy values.
-  constexpr source_location() : line_(0), file_name_(nullptr) {}
+  constexpr SourceLocation() : line_(0), file_name_(nullptr) {}
 
   // Wrapper to invoke the private constructor below. This should only be
   // used by the AISTREAMS_LOC macro, hence the name.
-  static constexpr source_location DoNotInvokeDirectly(std::uint_least32_t line,
-                                                       const char* file_name) {
-    return source_location(line, file_name);
+  static constexpr SourceLocation DoNotInvokeDirectly(std::uint_least32_t line,
+                                                      const char* file_name) {
+    return SourceLocation(line, file_name);
   }
 
   // The line number of the captured source location.
@@ -48,9 +48,9 @@ class source_location {
   // Do not invoke this constructor directly. Instead, use the
   // AISTREAMS_LOC macro below.
   //
-  // file_name must outlive all copies of the source_location
+  // file_name must outlive all copies of the SourceLocation
   // object, so in practice it should be a std::string literal.
-  constexpr source_location(std::uint_least32_t line, const char* file_name)
+  constexpr SourceLocation(std::uint_least32_t line, const char* file_name)
       : line_(line), file_name_(file_name) {}
 
   std::uint_least32_t line_;
@@ -59,8 +59,8 @@ class source_location {
 
 }  // namespace aistreams
 
-// If a function takes a source_location parameter, pass this as the argument.
+// If a function takes a SourceLocation parameter, pass this as the argument.
 #define AISTREAMS_LOC \
-  ::aistreams::source_location::DoNotInvokeDirectly(__LINE__, __FILE__)
+  ::aistreams::SourceLocation::DoNotInvokeDirectly(__LINE__, __FILE__)
 
 #endif  // AISTREAMS_UTIL_STATUS_SOURCE_LOCATION_H_

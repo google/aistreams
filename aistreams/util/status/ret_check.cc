@@ -17,7 +17,7 @@
 namespace aistreams {
 
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   // TODO Implement LogWithStackTrace().
   return ::aistreams::InternalErrorBuilder(location)
          << "RET_CHECK failure (" << location.file_name() << ":"
@@ -25,12 +25,12 @@ namespace aistreams {
 }
 
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location, const char* condition) {
+    ::aistreams::SourceLocation location, const char* condition) {
   return ::aistreams::RetCheckFailSlowPath(location) << condition;
 }
 
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location, const char* condition,
+    ::aistreams::SourceLocation location, const char* condition,
     const ::aistreams::Status& status) {
   return ::aistreams::RetCheckFailSlowPath(location)
          << condition << " returned " << status << " ";

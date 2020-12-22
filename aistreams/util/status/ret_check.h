@@ -24,20 +24,20 @@
 namespace aistreams {
 // Returns a StatusBuilder that corresponds to a `RET_CHECK` failure.
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location);
+    ::aistreams::SourceLocation location);
 
 // Returns a StatusBuilder that corresponds to a `RET_CHECK` failure.
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location, const char* condition);
+    ::aistreams::SourceLocation location, const char* condition);
 
 // Returns a StatusBuilder that corresponds to a `RET_CHECK` failure.
 ::aistreams::StatusBuilder RetCheckFailSlowPath(
-    ::aistreams::source_location location, const char* condition,
+    ::aistreams::SourceLocation location, const char* condition,
     const ::aistreams::Status& status);
 
 inline StatusBuilder RetCheckImpl(const ::aistreams::Status& status,
                                   const char* condition,
-                                  ::aistreams::source_location location) {
+                                  ::aistreams::SourceLocation location) {
   if (ABSL_PREDICT_TRUE(status.ok()))
     return ::aistreams::StatusBuilder(OkStatus(), location);
   return RetCheckFailSlowPath(location, condition, status);

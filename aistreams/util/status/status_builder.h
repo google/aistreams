@@ -35,14 +35,14 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
   // enabled, it will use `location` as the location from which the log message
   // occurs.  A typical user will call this with `AISTREAMS_LOC`.
   StatusBuilder(const ::aistreams::Status& original_status,
-                ::aistreams::source_location location)
+                ::aistreams::SourceLocation location)
       : status_(original_status),
         line_(location.line()),
         file_(location.file_name()),
         stream_(new std::ostringstream) {}
 
   StatusBuilder(::aistreams::Status&& original_status,
-                ::aistreams::source_location location)
+                ::aistreams::SourceLocation location)
       : status_(std::move(original_status)),
         line_(location.line()),
         file_(location.file_name()),
@@ -52,7 +52,7 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
   // enabled, it will use `location` as the location from which the log message
   // occurs.  A typical user will call this with `AISTREAMS_LOC`.
   StatusBuilder(::aistreams::StatusCode code,
-                ::aistreams::source_location location)
+                ::aistreams::SourceLocation location)
       : status_(code, ""),
         line_(location.line()),
         file_(location.file_name()),
@@ -108,42 +108,41 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
 };
 
 inline StatusBuilder AlreadyExistsErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kAlreadyExists, location);
 }
 
 inline StatusBuilder FailedPreconditionErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kFailedPrecondition, location);
 }
 
 inline StatusBuilder InternalErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kInternal, location);
 }
 
 inline StatusBuilder InvalidArgumentErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kInvalidArgument, location);
 }
 
 inline StatusBuilder NotFoundErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kNotFound, location);
 }
 
 inline StatusBuilder UnavailableErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kUnavailable, location);
 }
 
 inline StatusBuilder UnimplementedErrorBuilder(
-    ::aistreams::source_location location) {
+    ::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kUnimplemented, location);
 }
 
-inline StatusBuilder UnknownErrorBuilder(
-    ::aistreams::source_location location) {
+inline StatusBuilder UnknownErrorBuilder(::aistreams::SourceLocation location) {
   return StatusBuilder(::aistreams::StatusCode::kUnknown, location);
 }
 
