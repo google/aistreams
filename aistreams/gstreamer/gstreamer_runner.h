@@ -52,6 +52,12 @@ class GstreamerRunner {
     // OPTIONAL: If non-empty, an appsink will be appended after the main
     // processing pipeline to deliver the result through the given callback.
     ReceiverCallback receiver_callback;
+
+    // ----------------------------------------------
+    // System configurations. Power users only.
+
+    // Value of "sync" for appsink.
+    bool appsink_sync = false;
   };
 
   // Create and run a gstreamer pipeline.

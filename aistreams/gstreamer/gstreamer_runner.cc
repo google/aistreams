@@ -126,6 +126,7 @@ GstFlowReturn on_new_sample_from_sink(
   Status status = (*receiver_callback)(std::move(gstreamer_buffer));
   if (!status.ok()) {
     LOG(ERROR) << status.message();
+    return GST_FLOW_ERROR;
   }
   return GST_FLOW_OK;
 }
@@ -214,7 +215,7 @@ class GstreamerPipeline {
         return InternalError("Failed to get a pointer to the appsink element");
       }
       g_object_set(G_OBJECT(gstreamer_pipeline->gst_appsink_), "emit-signals",
-                   TRUE, "sync", FALSE, NULL);
+                   TRUE, "sync", options.appsink_sync ? TRUE : FALSE, NULL);
       g_signal_connect(gstreamer_pipeline->gst_appsink_, "new-sample",
                        G_CALLBACK(on_new_sample_from_sink),
                        const_cast<GstreamerRunner::ReceiverCallback*>(

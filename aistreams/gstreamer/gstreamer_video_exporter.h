@@ -35,10 +35,9 @@ namespace aistreams {
 
 // This class exports a sequence of video files.
 //
-// Objects of this class turns a sequence of packets from a stream into a
-// sequence of video files.
-//
-// TODO: Add support for exporting from a local gstreamer pipeline.
+// Objects of this class accepts sequence of packets from a stream or raw image
+// outputs of a gstreamer pipeline and turns them into a sequence of video
+// files. They can then be optionally uploaded to a GCS bucket.
 class GstreamerVideoExporter {
  public:
   // Options to configure the GstreamerVideoExporter.
@@ -79,12 +78,22 @@ class GstreamerVideoExporter {
     std::string gcs_object_dir;
 
     // ------------------------------------------------------------
-    // Stream server packet source configuration.
+    // Video source configuration.
 
-    // Packet receiver configuration.
+    // If true, uses a gstreamer pipeline as the video input source.
+    // Otherwise, use a stream server source.
+    bool use_gstreamer_input_source = false;
+
+    // The gstreamer pipeline used as the video input source.
+    //
+    // This pipeline must produce raw images; i.e. the final element should
+    // yield the buffers with caps video/x-raw.
+    std::string gstreamer_input_pipeline;
+
+    // Stream server source's receiver configuration.
     ReceiverOptions receiver_options;
 
-    // Timeout to receive a packet from a stream server.
+    // Stream server source's timeout to receive packets.
     absl::Duration receiver_timeout = absl::Seconds(10);
 
     // ------------------------------------------------------------

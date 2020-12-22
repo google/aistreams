@@ -20,6 +20,8 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "aistreams/base/util/packet_utils.h"
+#include "aistreams/gstreamer/gstreamer_raw_image_yielder.h"
+#include "aistreams/gstreamer/gstreamer_runner.h"
 #include "aistreams/gstreamer/gstreamer_video_writer.h"
 #include "aistreams/gstreamer/type_utils.h"
 #include "aistreams/port/canonical_errors.h"
@@ -35,11 +37,12 @@ namespace aistreams {
 
 namespace {
 
-constexpr char kDefaultWorkerName[] = "Worker";
 constexpr int kDefaultRandomStringLength = 5;
+constexpr char kDefaultWorkerName[] = "Worker";
 constexpr char kGcsUploaderName[] = "GcsUploader";
 constexpr char kLocalVideoSaverName[] = "LocalVideoSaver";
 constexpr char kStreamServerSourceName[] = "StreamServerSource";
+constexpr char kGstreamerInputSourceName[] = "GstreamerInputSource";
 
 // --------------------------------------------------------------------
 // Basic worker-channel implementation (i.e. a tiny dataflow system).
@@ -278,6 +281,101 @@ Status Attach(std::shared_ptr<Channel<T>> channel,
   dst_worker->template GetInputChannel<N>() = channel;
   return OkStatus();
 }
+
+// --------------------------------------------------------------------
+// GstreamerInputSource implementation.
+//
+// TODO: Can the StreamServerSource not just be GstreamerInputSource with an
+// aissrc in the beginning? Probably yes, but more features will be needed to
+// control the gstreamer pipeline (most likely by adding features to
+// GstreamerRunner).
+
+class GstreamerInputSource : public Worker<GstreamerInputSource, std::tuple<>,
+                                           std::tuple<StatusOr<RawImage>>> {
+ public:
+  struct Options {
+    std::string gstreamer_input_pipeline;
+  };
+  explicit GstreamerInputSource(const Options& options) : options_(options) {}
+
+  Status WorkImpl() {
+    AIS_RETURN_IF_ERROR(ValidatePreconditions());
+
+    // Create and run the gstreamer input pipeline.
+    GstreamerRunner::Options gstreamer_runner_options;
+    gstreamer_runner_options.appsink_sync = true;
+    gstreamer_runner_options.processing_pipeline_string =
+        DecideProcessingPipeline();
+    gstreamer_runner_options.receiver_callback =
+        [this](GstreamerBuffer buffer) -> Status {
+      auto raw_image_statusor = ToRawImage(std::move(buffer));
+      if (!raw_image_statusor.ok()) {
+        return raw_image_statusor.status();
+      }
+      if (out_channel()->IsDstCompleted()) {
+        return CancelledError(absl::StrFormat(
+            "%s: The downstream worker has completed.", GetName()));
+      }
+      if (!out_channel()->pcqueue()->TryEmplace(
+              std::move(raw_image_statusor))) {
+        LOG(ERROR)
+            << "The working raw image buffer is full; dropping frame. Consider "
+               "increasing the working buffer size if you believe this is "
+               "transient. Otherwise, your input source's frame rate may be "
+               "too high; please contact us to let us know your use case.";
+      }
+      return OkStatus();
+    };
+    auto gstreamer_runner_statusor =
+        GstreamerRunner::Create(gstreamer_runner_options);
+    if (!gstreamer_runner_statusor.ok()) {
+      return gstreamer_runner_statusor.status();
+    }
+    auto gstreamer_runner = std::move(gstreamer_runner_statusor).ValueOrDie();
+
+    // Wait for the runner to complete.
+    //
+    // TODO: Add support to get GstreamerRunner's status on completion.
+    while (!gstreamer_runner->WaitUntilCompleted(absl::Seconds(5)))
+      ;
+
+    // Cleanup.
+    if (!out_channel()->pcqueue()->TryEmplace(NotFoundError("Reached EOS."))) {
+      LOG(WARNING) << absl::StrFormat(
+          "%s: Failed to deliver EOS to dependent workers.", GetName());
+    }
+    return OkStatus();
+  }
+
+ private:
+  Options options_;
+
+  std::shared_ptr<Channel<StatusOr<RawImage>>> out_channel() {
+    return std::get<0>(out_channels_);
+  }
+
+  Status ValidatePreconditions() {
+    if (options_.gstreamer_input_pipeline.empty()) {
+      return InvalidArgumentError(absl::StrFormat(
+          "%s: You must specify a non-empty gstreamer input pipeline.",
+          GetName()));
+    }
+    if (out_channel() == nullptr) {
+      return FailedPreconditionError(absl::StrFormat(
+          "%s: No output channel found; please Attach() one.", GetName()));
+    }
+    if (!out_channel()->HasDst()) {
+      return InternalError(absl::StrFormat(
+          "%s: The output channel has no destination.", GetName()));
+    }
+    return OkStatus();
+  }
+
+  std::string DecideProcessingPipeline() {
+    return absl::StrFormat("%s ! videoconvert ! video/x-raw,format=RGB",
+                           options_.gstreamer_input_pipeline);
+  }
+};
 
 // --------------------------------------------------------------------
 // StreamServerSource implementation.
@@ -800,6 +898,13 @@ Status GstreamerVideoExporter::Run() {
       std::make_shared<StreamServerSource>(stream_server_source_options);
   stream_server_source->SetName(kStreamServerSourceName);
 
+  GstreamerInputSource::Options gstreamer_input_source_options;
+  gstreamer_input_source_options.gstreamer_input_pipeline =
+      options_.gstreamer_input_pipeline;
+  auto gstreamer_input_source =
+      std::make_shared<GstreamerInputSource>(gstreamer_input_source_options);
+  gstreamer_input_source->SetName(kGstreamerInputSourceName);
+
   auto file_path_channel = std::make_shared<Channel<StatusOr<std::string>>>(
       options_.working_buffer_size);
   auto status =
@@ -807,30 +912,49 @@ Status GstreamerVideoExporter::Run() {
   if (!status.ok()) {
     LOG(ERROR) << status;
     return UnknownError(
-        absl::StrFormat("Failed to Attach workers \"%s\" and \"%d\".",
+        absl::StrFormat("Failed to Attach workers \"%s\" and \"%s\".",
                         local_video_saver->GetName(), gcs_uploader->GetName()));
   }
 
   auto raw_image_channel = std::make_shared<Channel<StatusOr<RawImage>>>(
       options_.working_buffer_size);
-  status =
-      Attach<0, 0>(raw_image_channel, stream_server_source, local_video_saver);
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-    return UnknownError(absl::StrFormat(
-        "Failed to Attach workers \"%s\" and \"%d\".",
-        stream_server_source->GetName(), local_video_saver->GetName()));
+  if (options_.use_gstreamer_input_source) {
+    status = Attach<0, 0>(raw_image_channel, gstreamer_input_source,
+                          local_video_saver);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return UnknownError(absl::StrFormat(
+          "Failed to Attach workers \"%s\" and \"%s\".",
+          gstreamer_input_source->GetName(), local_video_saver->GetName()));
+    }
+  } else {
+    status = Attach<0, 0>(raw_image_channel, stream_server_source,
+                          local_video_saver);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return UnknownError(absl::StrFormat(
+          "Failed to Attach workers \"%s\" and \"%s\".",
+          stream_server_source->GetName(), local_video_saver->GetName()));
+    }
   }
 
   // Start the workers.
   gcs_uploader->Work();
   local_video_saver->Work();
-  stream_server_source->Work();
 
-  // Wait for the stream source to complete.
-  while (!stream_server_source->Join(absl::Seconds(5)))
-    ;
-  Status stream_server_source_status = stream_server_source->GetStatus();
+  // Wait for the video source to complete.
+  Status video_source_status = OkStatus();
+  if (options_.use_gstreamer_input_source) {
+    gstreamer_input_source->Work();
+    while (!gstreamer_input_source->Join(absl::Seconds(5)))
+      ;
+    video_source_status = gstreamer_input_source->GetStatus();
+  } else {
+    stream_server_source->Work();
+    while (!stream_server_source->Join(absl::Seconds(5)))
+      ;
+    video_source_status = stream_server_source->GetStatus();
+  }
 
   // Join the other workers.
   std::string deadline_exceeded_message =
@@ -855,8 +979,8 @@ Status GstreamerVideoExporter::Run() {
   Status return_status = OkStatus();
   Status error_status =
       UnknownError("The Run() did not complete successfully.");
-  if (!stream_server_source_status.ok()) {
-    LOG(ERROR) << stream_server_source_status;
+  if (!video_source_status.ok()) {
+    LOG(ERROR) << video_source_status;
     return_status = error_status;
   }
   if (!local_video_saver_status.ok()) {

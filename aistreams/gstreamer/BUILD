@@ -118,6 +118,7 @@ cc_library(
     ],
     deps = [
         ":gstreamer_raw_image_yielder",
+        ":gstreamer_runner",
         ":gstreamer_video_writer",
         ":type_utils",
         "//aistreams/base/types:gstreamer_buffer",
