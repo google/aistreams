@@ -115,3 +115,29 @@ cc_library(
         "@com_google_absl//absl/random",
     ],
 )
+
+cc_library(
+    name = "examine_stack",
+    srcs = [
+        "examine_stack.cc",
+    ],
+    hdrs = [
+        "examine_stack.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/debugging:stacktrace",
+        "@com_google_absl//absl/debugging:symbolize",
+    ],
+)
+
+cc_test(
+    name = "examine_stack_test",
+    srcs = [
+        "examine_stack_test.cc",
+    ],
+    deps = [
+        ":examine_stack",
+        "//aistreams/port:gtest_main",
+        "@com_google_absl//absl/strings",
+    ],
+)
