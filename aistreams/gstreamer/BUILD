@@ -138,6 +138,30 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "gstreamer_video_exporter_test",
+    srcs = ["gstreamer_video_exporter_test.cc"],
+    data = ["//testdata:exported_testdata"],
+    linkopts = [
+        "-lstdc++fs",
+    ],
+    deps = [
+        ":gstreamer_video_exporter",
+        ":type_utils",
+        "//aistreams/base/types:gstreamer_buffer",
+        "//aistreams/port:gtest_main",
+        "//aistreams/port:logging",
+        "//aistreams/port:status",
+        "//aistreams/port:statusor",
+        "//aistreams/util:file_path",
+        "//aistreams/util:producer_consumer_queue",
+        "//aistreams/util:random_string",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+    ],
+)
+
 cc_library(
     name = "gstreamer_utils",
     srcs = [
