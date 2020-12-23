@@ -129,12 +129,11 @@ TEST_F(StatusBuilderTest, StatusCode) {
 }
 
 TEST_F(StatusBuilderTest, Streaming) {
+  EXPECT_THAT(ToStatus(StatusBuilder(CancelledError(), Locs::kFoo) << "booyah"),
+              Eq(CancelledError("[/foo/foo.cc:1337] booyah")));
   EXPECT_THAT(
-      ToStatus(StatusBuilder(CancelledError(), SourceLocation()) << "booyah"),
-      Eq(CancelledError("booyah")));
-  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), SourceLocation())
-                       << "world"),
-              Eq(AbortedError("hello; world")));
+      ToStatus(StatusBuilder(AbortedError("hello"), Locs::kFoo) << "world"),
+      Eq(AbortedError("hello; [/foo/foo.cc:1337] world")));
 }
 
 TEST_F(StatusBuilderTest, PrependLvalue) {
@@ -324,14 +323,15 @@ TEST_F(StatusBuilderTest, NoLoggingLvalue) {
 
   {
     StatusBuilder builder(AbortedError(""), Locs::kSecret);
-    EXPECT_THAT(ToStatus(builder << "nope"), Eq(AbortedError("nope")));
+    EXPECT_THAT(ToStatus(builder << "nope"),
+                Eq(AbortedError("[/foo/secret.cc:1337] nope")));
   }
   {
     StatusBuilder builder(AbortedError(""), Locs::kSecret);
     // Enable and then disable logging.
     EXPECT_THAT(
         ToStatus(builder.Log(::google::WARNING).SetNoLogging() << "not at all"),
-        Eq(AbortedError("not at all")));
+        Eq(AbortedError("[/foo/secret.cc:1337] not at all")));
   }
 }
 
@@ -339,13 +339,13 @@ TEST_F(StatusBuilderTest, NoLoggingRvalue) {
   EXPECT_CALL(*mock_log_sink_, send(_, _, _, _, _, _, _)).Times(0);
   EXPECT_THAT(
       ToStatus(StatusBuilder(AbortedError(""), Locs::kSecret) << "nope"),
-      Eq(AbortedError("nope")));
+      Eq(AbortedError("[/foo/secret.cc:1337] nope")));
   // Enable and then disable logging.
   EXPECT_THAT(ToStatus(StatusBuilder(AbortedError(""), Locs::kSecret)
                            .Log(::google::WARNING)
                            .SetNoLogging()
                        << "not at all"),
-              Eq(AbortedError("not at all")));
+              Eq(AbortedError("[/foo/secret.cc:1337] not at all")));
 }
 
 TEST_F(StatusBuilderTest, EmitStackTracePlusSomethingLikelyUniqueLvalue) {
@@ -373,14 +373,15 @@ TEST_F(StatusBuilderTest, WithRvalueRef) {
   auto policy = [](StatusBuilder sb) { return sb << "policy"; };
   EXPECT_THAT(
       ToStatus(
-          StatusBuilder(AbortedError("hello"), SourceLocation()).With(policy)),
-      Eq(AbortedError("hello; policy")));
+          StatusBuilder(AbortedError("hello"), Locs::kLevel0).With(policy)),
+      Eq(AbortedError("hello; [/tmp/level0.cc:1234] policy")));
 }
 
 TEST_F(StatusBuilderTest, WithRef) {
   auto policy = [](StatusBuilder sb) { return sb << "policy"; };
-  StatusBuilder sb(AbortedError("zomg"), SourceLocation());
-  EXPECT_THAT(ToStatus(sb.With(policy)), Eq(AbortedError("zomg; policy")));
+  StatusBuilder sb(AbortedError("zomg"), Locs::kLevel1);
+  EXPECT_THAT(ToStatus(sb.With(policy)),
+              Eq(AbortedError("zomg; [/tmp/level1.cc:1234] policy")));
 }
 
 TEST_F(StatusBuilderTest, WithTypeChange) {
@@ -433,27 +434,27 @@ TEST_F(StatusBuilderTest, StreamInsertionOperator) {
 TEST(WithExtraMessagePolicyTest, AppendsToExtraMessage) {
   // The policy simply calls operator<< on the builder; the following examples
   // demonstrate that, without duplicating all of the above tests.
-  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), SourceLocation())
+  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), Locs::kLevel2)
                            .With(ExtraMessage("world"))),
-              Eq(AbortedError("hello; world")));
-  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), SourceLocation())
+              Eq(AbortedError("hello; [/tmp/level2.cc:1234] world")));
+  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), Locs::kLevel2)
                            .With(ExtraMessage() << "world")),
-              Eq(AbortedError("hello; world")));
-  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), SourceLocation())
+              Eq(AbortedError("hello; [/tmp/level2.cc:1234] world")));
+  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), Locs::kLevel2)
                            .With(ExtraMessage("world"))
                            .With(ExtraMessage("!"))),
-              Eq(AbortedError("hello; world!")));
-  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), SourceLocation())
+              Eq(AbortedError("hello; [/tmp/level2.cc:1234] world!")));
+  EXPECT_THAT(ToStatus(StatusBuilder(AbortedError("hello"), Locs::kLevel2)
                            .With(ExtraMessage("world, "))
                            .SetPrepend()),
               Eq(AbortedError("world, hello")));
 
   // The above examples use temporary StatusBuilder rvalues; verify things also
   // work fine when StatusBuilder is an lvalue.
-  StatusBuilder builder(AbortedError("hello"), SourceLocation());
+  StatusBuilder builder(AbortedError("hello"), Locs::kLevel2);
   EXPECT_THAT(
       ToStatus(builder.With(ExtraMessage("world")).With(ExtraMessage("!"))),
-      Eq(AbortedError("hello; world!")));
+      Eq(AbortedError("hello; [/tmp/level2.cc:1234] world!")));
 }
 
 #line 1337 "/foo/secret.cc"

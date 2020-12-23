@@ -39,7 +39,6 @@ StatusBuilder::Rep::Rep(const Rep& r)
       should_log_stack_trace(r.should_log_stack_trace),
       message_join_style(r.message_join_style) {}
 
-// TODO: add current file and line to the new status
 Status StatusBuilder::JoinMessageToStatus(const Status& s,
                                           absl::string_view msg,
                                           MessageJoinStyle style) {
@@ -47,10 +46,12 @@ Status StatusBuilder::JoinMessageToStatus(const Status& s,
 
   std::string new_msg;
   if (style == MessageJoinStyle::kAnnotate) {
+    std::string formatted_msg =
+        absl::StrFormat("[%s:%d] %s", loc_.file_name(), loc_.line(), msg);
     if (!s.message().empty()) {
-      new_msg = absl::StrFormat("%s; %s", s.message(), msg);
+      new_msg = absl::StrFormat("%s; %s", s.message(), formatted_msg);
     } else {
-      new_msg = std::string(msg);
+      new_msg = std::move(formatted_msg);
     }
   } else if (style == MessageJoinStyle::kPrepend) {
     new_msg = absl::StrCat(msg, s.message());

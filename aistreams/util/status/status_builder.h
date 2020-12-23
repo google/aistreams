@@ -208,8 +208,8 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
 
   // Creates a new status based on an old one by joining the message from the
   // original to an additional message.
-  static Status JoinMessageToStatus(const Status& s, absl::string_view msg,
-                                    MessageJoinStyle style);
+  Status JoinMessageToStatus(const Status& s, absl::string_view msg,
+                             MessageJoinStyle style);
 
   // Creates a Status from this builder and logs it if the builder has been
   // configured to log itself.
