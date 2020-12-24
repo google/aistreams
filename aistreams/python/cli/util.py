@@ -21,5 +21,6 @@ def to_cpp_bool_string(b):
 def normalize_string_for_commandline(s):
   if not s:
     return "\"\""
-  else:
-    return s
+  if " " in s:
+    return "\"{}\"".format(s)
+  return s

@@ -9,6 +9,7 @@ py_binary(
         "aisctl.py",
     ],
     deps = [
+        "//aistreams/python/cli/chunk:cli",
         "//aistreams/python/cli/ingest:cli",
         "//aistreams/python/cli/managed:cli",
         "//aistreams/python/cli/onprem:cli",

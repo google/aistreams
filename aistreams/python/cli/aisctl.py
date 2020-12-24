@@ -19,6 +19,7 @@ import pathlib
 import sys
 
 import aistreams.gstreamer as gst
+import aistreams.python.cli.chunk.commands as chunk
 import aistreams.python.cli.ingest.commands as ingest
 import aistreams.python.cli.managed.commands as managed
 import aistreams.python.cli.onprem.commands as onprem
@@ -49,6 +50,7 @@ def main(verbose):
   _set_environment_variables()
 
 
+main.add_command(chunk.cli)
 main.add_command(ingest.cli)
 main.add_command(managed.cli)
 main.add_command(onprem.cli)
