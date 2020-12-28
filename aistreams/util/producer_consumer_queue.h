@@ -51,7 +51,7 @@ class ProducerConsumerQueue {
   //
   // Note: the value returned by this function may not be valid for long since
   // other threads may be adding/removing to the queue. Use this as a hint.
-  int count() ABSL_LOCKS_EXCLUDED(mu_) const;
+  int count() const ABSL_LOCKS_EXCLUDED(mu_);
 
   // Returns the capacity of the queue.
   int capacity() const;
@@ -171,9 +171,12 @@ bool ProducerConsumerQueue<T>::TryPush(std::unique_ptr<T>& p,
                                        absl::Duration timeout) {
   absl::MutexLock lock(&mu_);
   if (IsLimitedCapacity()) {
-    if (q_.size() >= static_cast<size_t>(capacity_) &&
-        timeout > absl::Duration()) {
-      cv_not_full_.WaitWithTimeout(&mu_, timeout);
+    absl::Duration time_left = timeout;
+    absl::Time deadline = absl::Now() + time_left;
+    while (q_.size() >= static_cast<size_t>(capacity_) &&
+           time_left > absl::ZeroDuration()) {
+      cv_not_full_.WaitWithTimeout(&mu_, time_left);
+      time_left = deadline - absl::Now();
     }
     if (q_.size() >= static_cast<size_t>(capacity_)) {
       return false;
@@ -188,7 +191,6 @@ template <typename... Args>
 void ProducerConsumerQueue<T>::InternalEmplace(Args&&... args) {
   q_.emplace_back(std::forward<Args>(args)...);
   cv_not_empty_.Signal();
-  return;
 }
 
 template <typename T>
@@ -208,8 +210,11 @@ bool ProducerConsumerQueue<T>::TryPop(T& elem) {
 template <typename T>
 bool ProducerConsumerQueue<T>::TryPop(T& elem, absl::Duration timeout) {
   absl::MutexLock lock(&mu_);
-  if (q_.empty() && timeout > absl::Duration()) {
-    cv_not_empty_.WaitWithTimeout(&mu_, timeout);
+  absl::Duration time_left = timeout;
+  absl::Time deadline = absl::Now() + time_left;
+  while (q_.empty() && time_left > absl::ZeroDuration()) {
+    cv_not_empty_.WaitWithTimeout(&mu_, time_left);
+    time_left = deadline - absl::Now();
   }
   if (q_.empty()) {
     return false;

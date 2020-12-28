@@ -43,11 +43,9 @@ OffsetConfig ToProtoOffsetConfig(
     OffsetOptions::SpecialOffset special_offset =
         absl::get<OffsetOptions::SpecialOffset>(offset_position);
     if (special_offset == OffsetOptions::SpecialOffset::kOffsetBeginning) {
-      proto_offset_config.set_special_offset(
-          OffsetConfig_SpecialOffset_OFFSET_BEGINNING);
+      proto_offset_config.set_special_offset(OffsetConfig::OFFSET_BEGINNING);
     } else if (special_offset == OffsetOptions::SpecialOffset::kOffsetEnd) {
-      proto_offset_config.set_special_offset(
-          OffsetConfig_SpecialOffset_OFFSET_END);
+      proto_offset_config.set_special_offset(OffsetConfig::OFFSET_END);
     }
   } else if (absl::holds_alternative<int64_t>(offset_position)) {
     proto_offset_config.set_seek_position(absl::get<int64_t>(offset_position));
