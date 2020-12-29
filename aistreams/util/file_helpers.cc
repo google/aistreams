@@ -58,7 +58,7 @@ Status SetContents(absl::string_view file_name, absl::string_view content) {
   size_t ret = fclose(fp);
   if (ret == 0 && ferror(fp)) {
     return InternalError(
-        absl::StrFormat("Error while writing file: ", file_name));
+        absl::StrFormat("Error while writing file: %s", file_name));
   }
   return OkStatus();
 }
