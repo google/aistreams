@@ -34,9 +34,8 @@ enum class ReceiverMode {
   StreamingReceive,
   UnaryReceive,
   Replay,
-  // Receiver will switch to replay mode if receiver returns NOT_FOUND from
+  // Receiver will switch to replay mode if receiver returns OUT_OF_RANGE from
   // streaming receive mode.
-  // TODO: implement auto mode.
   Auto,
 };
 
@@ -63,16 +62,7 @@ class PacketReceiver {
     std::string stream_name;
 
     // The receiver name for the stream server to identify each receiver.
-    //
-    // TODO: Randomly generate a receiver_name if it is not specified.
     std::string receiver_name;
-
-    // Set this true to use unary rpc to receive packets.
-    //
-    // This is mainly useful for approximate profiling/packet tracing with
-    // istio. It is not particularly efficient.
-    // TODO: deprecate
-    bool enable_unary_rpc = false;
 
     // The interval between unary rpc polls.
     absl::Duration unary_rpc_poll_interval = absl::ZeroDuration();
@@ -82,10 +72,6 @@ class PacketReceiver {
     // longer than the `timeout`, then the `Receive` method call will be
     // terminated.
     absl::Duration timeout = absl::InfiniteDuration();
-
-    // Set this true to replay stream.
-    // TODO: deprecate
-    bool replay_stream = false;
 
     // The receiver mode. Default receiver mode is the streaming receiver.
     ReceiverMode receiver_mode = ReceiverMode::StreamingReceive;
